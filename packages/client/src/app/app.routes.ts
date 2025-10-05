@@ -8,12 +8,12 @@ export const routes: Routes = [
   },
   {
     path: 'text-model',
-    loadComponent: () => import('./features/text-model/text-model.component').then(m => m.TextModelComponent),
+    loadComponent: () => import('./features/text-model/text-model').then(m => m.TextModelComponent),
     title: 'Text Model - AI Gateway'
   },
   {
     path: 'image-model',
-    loadComponent: () => import('./features/image-model/image-model.component').then(m => m.ImageModelComponent),
+    loadComponent: () => import('./features/image-model/image-model').then(m => m.ImageModelComponent),
     title: 'Image Model - AI Gateway'
   },
   {

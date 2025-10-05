@@ -1,4 +1,4 @@
-import { IModelStrategy, ProcessContext, ModelOutput } from '../../models/strategy.interface';
+import { IModelStrategy, ProcessContext, ModelOutput } from '../../models/strategy.interface.js';
 
 /**
  * Model ID for Google Text Bison

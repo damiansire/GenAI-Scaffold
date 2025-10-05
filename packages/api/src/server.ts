@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { modelFactory } from './models/factory';
-import { schemaRegistry } from './models/registry';
-import { loadPlugins } from './models/loader';
-import { createModelRoutes } from './api/routes/modelRoutes';
+import { modelFactory } from './models/factory.js';
+import { schemaRegistry } from './models/registry.js';
+import { loadPlugins } from './models/loader.js';
+import { createModelRoutes } from './api/routes/modelRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -19,7 +19,7 @@ class Server {
 
   constructor() {
     this.app = express();
-    this.port = parseInt(process.env.PORT || '3000', 10);
+    this.port = parseInt(process.env['PORT'] || '3000', 10);
     
     this.setupMiddleware();
     this.setupRoutes();
@@ -31,7 +31,7 @@ class Server {
   private setupMiddleware(): void {
     // CORS configuration
     this.app.use(cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:4200'],
+      origin: process.env['ALLOWED_ORIGINS']?.split(',') || ['http://localhost:4200'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -58,7 +58,7 @@ class Server {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'development',
+        environment: process.env['NODE_ENV'] || 'development',
         registeredModels: modelFactory.getRegisteredModels(),
         registeredSchemas: schemaRegistry.getRegisteredModels()
       });
@@ -80,7 +80,7 @@ class Server {
     this.app.use('/api', modelRoutes);
 
     // 404 handler for undefined routes
-    this.app.use('*', (req, res) => {
+    this.app.use((req, res) => {
       res.status(404).json({
         error: 'Route not found',
         path: req.originalUrl,
@@ -94,7 +94,7 @@ class Server {
       console.error('Unhandled error:', err);
       res.status(500).json({
         error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+        message: process.env['NODE_ENV'] === 'development' ? err.message : 'Something went wrong',
         timestamp: new Date().toISOString()
       });
     });

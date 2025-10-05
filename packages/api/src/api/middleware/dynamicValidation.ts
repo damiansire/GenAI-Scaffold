@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { SchemaRegistry } from '../../models/registry';
-import { ApiError } from '../../core/ApiError';
+import { SchemaRegistry } from '../../models/registry.js';
+import { ApiError } from '../../core/ApiError.js';
 
 /**
  * Interface for validation error details

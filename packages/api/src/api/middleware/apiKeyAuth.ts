@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiError } from '../../core/ApiError';
+import { ApiError } from '../../core/ApiError.js';
 
 /**
  * Interface for API key validation result

@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ModelFactory } from './factory';
-import { SchemaRegistry } from './registry';
+import { ModelFactory } from './factory.js';
+import { SchemaRegistry } from './registry.js';
 
 /**
  * Interface for plugin module exports

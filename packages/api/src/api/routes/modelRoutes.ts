@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { ModelFactory } from '../../models/factory';
-import { SchemaRegistry } from '../../models/registry';
-import { apiKeyAuth } from '../middleware/apiKeyAuth';
-import { createDynamicValidationMiddleware } from '../middleware/dynamicValidation';
+import { ModelFactory } from '../../models/factory.js';
+import { SchemaRegistry } from '../../models/registry.js';
+import { apiKeyAuth } from '../middleware/apiKeyAuth.js';
+import { createDynamicValidationMiddleware } from '../middleware/dynamicValidation.js';
 import { 
   createModelController, 
   createModelInfoController, 
   createModelListController 
-} from '../controllers/modelController';
+} from '../controllers/modelController.js';
 
 /**
  * Create model routes with dependencies

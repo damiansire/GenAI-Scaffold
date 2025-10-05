@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { ModelFactory } from '../../models/factory';
-import { ProcessContext } from '../../models/strategy.interface';
-import { ApiError } from '../../core/ApiError';
-import { asyncHandler } from '../middleware/errorHandler';
+import { ModelFactory } from '../../models/factory.js';
+import { ProcessContext } from '../../models/strategy.interface.js';
+import { ApiError } from '../../core/ApiError.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 
 /**
  * Interface for model invocation request body

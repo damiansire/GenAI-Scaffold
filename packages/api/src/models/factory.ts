@@ -1,4 +1,4 @@
-import { IModelStrategy } from './strategy.interface';
+import { IModelStrategy } from './strategy.interface.js';
 
 /**
  * Factory class for creating and managing model strategies
