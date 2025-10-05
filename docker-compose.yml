@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Backend API Service
+  api:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.server
+    container_name: ai-gateway-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - API_KEY_1=${API_KEY_1:-default-api-key-change-in-production}
+      - API_KEY_2=${API_KEY_2:-}
+      - DEFAULT_API_KEY=${DEFAULT_API_KEY:-default-key-change-in-production}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - ai-gateway-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Client Service
+  client:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.client
+    container_name: ai-gateway-client
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - ai-gateway-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# Custom network for service communication
+networks:
+  ai-gateway-network:
+    driver: bridge
+    name: ai-gateway-network
+
+# Optional: Volume for persistent data
+volumes:
+  logs:
+    driver: local
