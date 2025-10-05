@@ -1,0 +1,187 @@
+<div class="text-model-container">
+  <header class="header">
+    <h1>🤖 Text Model - Google Text Bison</h1>
+    <p>Generate text using Google's Text Bison AI model</p>
+  </header>
+
+  <div class="content">
+    <!-- Form Section -->
+    <section class="form-section">
+      <form [formGroup]="textForm" (ngSubmit)="onSubmit()" class="text-form">
+        <div class="form-group">
+          <label for="prompt" class="form-label">Prompt *</label>
+          <textarea
+            id="prompt"
+            formControlName="prompt"
+            class="form-control"
+            [class.error]="hasError('prompt')"
+            placeholder="Enter your prompt here..."
+            rows="4"
+          ></textarea>
+          @if (hasError('prompt')) {
+            <div class="error-message">{{ getErrorMessage('prompt') }}</div>
+          }
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="maxTokens" class="form-label">Max Tokens</label>
+            <input
+              type="number"
+              id="maxTokens"
+              formControlName="maxTokens"
+              class="form-control"
+              [class.error]="hasError('maxTokens')"
+              min="1"
+              max="1024"
+            />
+            @if (hasError('maxTokens')) {
+              <div class="error-message">{{ getErrorMessage('maxTokens') }}</div>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="temperature" class="form-label">Temperature</label>
+            <input
+              type="number"
+              id="temperature"
+              formControlName="temperature"
+              class="form-control"
+              [class.error]="hasError('temperature')"
+              min="0.0"
+              max="1.0"
+              step="0.1"
+            />
+            @if (hasError('temperature')) {
+              <div class="error-message">{{ getErrorMessage('temperature') }}</div>
+            }
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="topP" class="form-label">Top P</label>
+            <input
+              type="number"
+              id="topP"
+              formControlName="topP"
+              class="form-control"
+              [class.error]="hasError('topP')"
+              min="0.0"
+              max="1.0"
+              step="0.1"
+            />
+            @if (hasError('topP')) {
+              <div class="error-message">{{ getErrorMessage('topP') }}</div>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="topK" class="form-label">Top K</label>
+            <input
+              type="number"
+              id="topK"
+              formControlName="topK"
+              class="form-control"
+              [class.error]="hasError('topK')"
+              min="1"
+              max="100"
+            />
+            @if (hasError('topK')) {
+              <div class="error-message">{{ getErrorMessage('topK') }}</div>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="loading() || !textForm.valid"
+          >
+            @if (loading()) {
+              <span class="spinner"></span>
+              Processing...
+            } @else {
+              Generate Text
+            }
+          </button>
+          
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="resetForm()"
+            [disabled]="loading()"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Response Section -->
+    <section class="response-section">
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner-large"></div>
+          <p>Generating text response...</p>
+        </div>
+      }
+
+      @if (error()) {
+        <div class="error-state">
+          <h3>❌ Error</h3>
+          <p>{{ error() }}</p>
+        </div>
+      }
+
+      @if (response() && !loading()) {
+        <div class="response-state">
+          <h3>✅ Response</h3>
+          
+          <div class="response-meta">
+            <div class="meta-item">
+              <span class="meta-label">Processing Time:</span>
+              <span class="meta-value">{{ response()?.metadata?.processingTime }}ms</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Model:</span>
+              <span class="meta-value">{{ response()?.metadata?.modelId }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Timestamp:</span>
+              <span class="meta-value">{{ response()?.metadata?.timestamp | date:'medium' }}</span>
+            </div>
+          </div>
+
+          <div class="response-content">
+            <h4>Generated Text:</h4>
+            <div class="text-output">
+              {{ response()?.data?.text || 'No text generated' }}
+            </div>
+          </div>
+
+          @if (response()?.data?.usage) {
+            <div class="usage-info">
+              <h4>Usage Information:</h4>
+              <div class="usage-stats">
+                <div class="stat">
+                  <span class="stat-label">Prompt Tokens:</span>
+                  <span class="stat-value">{{ response()?.data?.usage?.promptTokens }}</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Completion Tokens:</span>
+                  <span class="stat-value">{{ response()?.data?.usage?.completionTokens }}</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Total Tokens:</span>
+                  <span class="stat-value">{{ response()?.data?.usage?.totalTokens }}</span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</div>
