@@ -56,7 +56,7 @@ export const configSchema = {
     }
   },
   required: ['prompt'],
-  additionalProperties: false
+  additionalProperties: true
 };
 
 /**

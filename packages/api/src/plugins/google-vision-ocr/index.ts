@@ -50,7 +50,7 @@ export const configSchema = {
     }
   },
   required: ['imageFile'],
-  additionalProperties: false,
+  additionalProperties: true,
   // Custom property to indicate file upload requirement
   'x-multipart-media': {
     fieldName: 'imageFile',
@@ -302,44 +302,62 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
           {
             text: "Amount: $1,234.56",
             confidence: 0.96,
-            boundingBox: { x: 50, y: 200, width: 160, height: 32 },
+            boundingBox: { x: 50, y: 200, width: 160, height: 30 },
+            language: options.language
+          },
+          {
+            text: "Status: Paid",
+            confidence: 0.90,
+            boundingBox: { x: 50, y: 250, width: 120, height: 28 },
             language: options.language
           }
         ],
         language: options.language,
-        confidence: 0.96,
+        confidence: 0.94,
         imageInfo: {
           width: 600,
           height: 400,
           format: mimeType.split('/')[1].toUpperCase(),
           size: 512000
         },
-        processingTime: 1800
+        processingTime: 2800
       },
       {
-        text: "Handwritten note: Remember to buy groceries\n- Milk\n- Bread\n- Eggs\n- Coffee",
+        text: "Handwritten Note: Remember to buy groceries\n- Milk\n- Bread\n- Eggs\n- Apples",
         annotations: [
           {
             text: "Remember to buy groceries",
             confidence: 0.85,
-            boundingBox: { x: 30, y: 80, width: 250, height: 40 },
+            boundingBox: { x: 20, y: 30, width: 250, height: 25 },
             language: options.language
           },
           {
             text: "Milk",
-            confidence: 0.90,
-            boundingBox: { x: 50, y: 140, width: 60, height: 25 },
+            confidence: 0.88,
+            boundingBox: { x: 40, y: 70, width: 50, height: 20 },
             language: options.language
           },
           {
             text: "Bread",
-            confidence: 0.88,
-            boundingBox: { x: 50, y: 180, width: 70, height: 28 },
+            confidence: 0.87,
+            boundingBox: { x: 40, y: 100, width: 60, height: 20 },
+            language: options.language
+          },
+          {
+            text: "Eggs",
+            confidence: 0.89,
+            boundingBox: { x: 40, y: 130, width: 45, height: 20 },
+            language: options.language
+          },
+          {
+            text: "Apples",
+            confidence: 0.86,
+            boundingBox: { x: 40, y: 160, width: 70, height: 20 },
             language: options.language
           }
         ],
         language: options.language,
-        confidence: 0.88,
+        confidence: 0.87,
         imageInfo: {
           width: 400,
           height: 300,
@@ -350,13 +368,37 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
       }
     ];
 
-    // Filter annotations based on confidence threshold
-    return baseScenarios.map(scenario => ({
-      ...scenario,
-      annotations: scenario.annotations.filter(annotation => 
-        annotation.confidence >= options.confidenceThreshold
-      )
-    }));
+    // Add language-specific scenarios
+    if (options.language === 'es') {
+      baseScenarios.push({
+        text: "Texto extraído de una imagen usando OCR. Esta tecnología puede reconocer texto en varios idiomas.",
+        annotations: [
+          {
+            text: "Texto extraído de una imagen",
+            confidence: 0.93,
+            boundingBox: { x: 10, y: 20, width: 220, height: 30 },
+            language: options.language
+          },
+          {
+            text: "usando OCR",
+            confidence: 0.91,
+            boundingBox: { x: 10, y: 60, width: 100, height: 25 },
+            language: options.language
+          }
+        ],
+        language: options.language,
+        confidence: 0.92,
+        imageInfo: {
+          width: 500,
+          height: 200,
+          format: mimeType.split('/')[1].toUpperCase(),
+          size: 128000
+        },
+        processingTime: 2400
+      });
+    }
+
+    return baseScenarios;
   }
 
   /**
@@ -368,11 +410,12 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
       modelId,
       modelName: this.modelName,
       provider: 'Google',
-      type: 'vision-ocr',
-      capabilities: ['text-detection', 'ocr', 'image-analysis'],
-      supportedFormats: ['JPEG', 'PNG', 'GIF', 'WEBP', 'BMP'],
-      maxFileSize: '10MB',
-      supportsStreaming: false
+      type: 'image-ocr',
+      capabilities: ['text-extraction', 'ocr', 'document-analysis'],
+      maxFileSize: 10485760, // 10MB
+      supportedFormats: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'],
+      supportsBoundingBoxes: true,
+      supportsLanguageDetection: true
     };
   }
 }
