@@ -1,0 +1,259 @@
+<div class="image-model-container">
+  <header class="header">
+    <h1>🔍 Image Model - Google Vision OCR</h1>
+    <p>Extract text from images using Google's Vision OCR model</p>
+  </header>
+
+  <div class="content">
+    <!-- Form Section -->
+    <section class="form-section">
+      <form [formGroup]="imageForm" (ngSubmit)="onSubmit()" class="image-form">
+        <!-- File Upload -->
+        <div class="form-group file-upload-group">
+          <label for="imageFile" class="form-label">Image File *</label>
+          <div class="file-upload-area" [class.has-file]="selectedFile()">
+            <input
+              #fileInput
+              type="file"
+              id="imageFile"
+              (change)="onFileSelected($event)"
+              accept="image/*"
+              class="file-input"
+            />
+            
+            @if (!selectedFile()) {
+              <div class="file-upload-placeholder">
+                <div class="upload-icon">📁</div>
+                <p>Click to select an image file</p>
+                <small>Supports JPEG, PNG, GIF, WEBP, BMP (max 10MB)</small>
+              </div>
+            } @else {
+              <div class="file-selected">
+                <div class="file-info">
+                  <span class="file-icon">{{ getFileTypeIcon(selectedFile()!.type) }}</span>
+                  <div class="file-details">
+                    <div class="file-name">{{ selectedFile()!.name }}</div>
+                    <div class="file-size">{{ formatFileSize(selectedFile()!.size) }}</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn-remove-file"
+                  (click)="clearFile()"
+                  title="Remove file"
+                >
+                  ✕
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Form Controls -->
+        <div class="form-group">
+          <label for="language" class="form-label">Language</label>
+          <select
+            id="language"
+            formControlName="language"
+            class="form-control"
+            [class.error]="hasError('language')"
+          >
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+          </select>
+          @if (hasError('language')) {
+            <div class="error-message">{{ getErrorMessage('language') }}</div>
+          }
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="maxResults" class="form-label">Max Results</label>
+            <input
+              type="number"
+              id="maxResults"
+              formControlName="maxResults"
+              class="form-control"
+              [class.error]="hasError('maxResults')"
+              min="1"
+              max="100"
+            />
+            @if (hasError('maxResults')) {
+              <div class="error-message">{{ getErrorMessage('maxResults') }}</div>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="confidenceThreshold" class="form-label">Confidence Threshold</label>
+            <input
+              type="number"
+              id="confidenceThreshold"
+              formControlName="confidenceThreshold"
+              class="form-control"
+              [class.error]="hasError('confidenceThreshold')"
+              min="0.0"
+              max="1.0"
+              step="0.1"
+            />
+            @if (hasError('confidenceThreshold')) {
+              <div class="error-message">{{ getErrorMessage('confidenceThreshold') }}</div>
+            }
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                formControlName="includeBoundingBoxes"
+                class="checkbox-input"
+              />
+              <span class="checkbox-text">Include Bounding Boxes</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="outputFormat" class="form-label">Output Format</label>
+            <select
+              id="outputFormat"
+              formControlName="outputFormat"
+              class="form-control"
+              [class.error]="hasError('outputFormat')"
+            >
+              <option value="structured">Structured</option>
+              <option value="text">Text Only</option>
+              <option value="json">JSON</option>
+            </select>
+            @if (hasError('outputFormat')) {
+              <div class="error-message">{{ getErrorMessage('outputFormat') }}</div>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="loading() || !imageForm.valid || !selectedFile()"
+          >
+            @if (loading()) {
+              <span class="spinner"></span>
+              Processing...
+            } @else {
+              Extract Text
+            }
+          </button>
+          
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="resetForm()"
+            [disabled]="loading()"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Response Section -->
+    <section class="response-section">
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner-large"></div>
+          <p>Processing image and extracting text...</p>
+        </div>
+      }
+
+      @if (error()) {
+        <div class="error-state">
+          <h3>❌ Error</h3>
+          <p>{{ error() }}</p>
+        </div>
+      }
+
+      @if (response() && !loading()) {
+        <div class="response-state">
+          <h3>✅ OCR Results</h3>
+          
+          <div class="response-meta">
+            <div class="meta-item">
+              <span class="meta-label">Processing Time:</span>
+              <span class="meta-value">{{ response()?.metadata?.processingTime }}ms</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Model:</span>
+              <span class="meta-value">{{ response()?.metadata?.modelId }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Timestamp:</span>
+              <span class="meta-value">{{ response()?.metadata?.timestamp | date:'medium' }}</span>
+            </div>
+          </div>
+
+          <div class="response-content">
+            <h4>Extracted Text:</h4>
+            <div class="text-output">
+              {{ response()?.data?.text || 'No text detected' }}
+            </div>
+          </div>
+
+          @if (response()?.data?.annotations && response()?.data?.annotations.length > 0) {
+            <div class="annotations-info">
+              <h4>Text Annotations ({{ response()?.data?.annotations.length }}):</h4>
+              <div class="annotations-list">
+                @for (annotation of response()?.data?.annotations; track $index) {
+                  <div class="annotation-item">
+                    <div class="annotation-header">
+                      <span class="annotation-text">{{ annotation.text }}</span>
+                      <span class="annotation-confidence">
+                        {{ (annotation.confidence * 100).toFixed(1) }}%
+                      </span>
+                    </div>
+                    @if (annotation.boundingBox) {
+                      <div class="annotation-bounds">
+                        Position: ({{ annotation.boundingBox.x }}, {{ annotation.boundingBox.y }})
+                        Size: {{ annotation.boundingBox.width }}×{{ annotation.boundingBox.height }}
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (response()?.data?.imageInfo) {
+            <div class="image-info">
+              <h4>Image Information:</h4>
+              <div class="image-stats">
+                <div class="stat">
+                  <span class="stat-label">Dimensions:</span>
+                  <span class="stat-value">
+                    {{ response()?.data?.imageInfo?.width }}×{{ response()?.data?.imageInfo?.height }}
+                  </span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Format:</span>
+                  <span class="stat-value">{{ response()?.data?.imageInfo?.format }}</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Size:</span>
+                  <span class="stat-value">{{ formatFileSize(response()?.data?.imageInfo?.size || 0) }}</span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</div>
