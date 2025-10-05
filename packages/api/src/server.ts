@@ -34,7 +34,7 @@ class Server {
       origin: process.env['ALLOWED_ORIGINS']?.split(',') || ['http://localhost:4200'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key']
     }));
 
     // Body parsing middleware
