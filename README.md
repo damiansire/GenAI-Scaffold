@@ -66,7 +66,7 @@ Make sure you have the following installed:
 
 - **Node.js** (v18 or higher) and **npm**
 - **Angular CLI** (`npm install -g @angular/cli`)
-- **Docker** and **Docker Compose**
+- **Docker** and **Docker Compose** (optional)
 
 ---
 
@@ -82,7 +82,7 @@ cd GenAI-Scaffold
 Create your environment file by copying the example:
 
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
 Edit `.env` and add your Google Gemini API key:
@@ -99,13 +99,26 @@ npm install
 
 ### Running the Application
 
-To start both servers (frontend and backend) in development mode with hot reload:
+#### Option 1: Development Mode (Recommended for development)
 
 ```bash
 npm run dev
 ```
 
 - **Angular frontend**: http://localhost:4200
+- **Node.js backend**: http://localhost:3000
+
+#### Option 2: Docker Mode (Recommended for production/testing)
+
+```bash
+# Start Docker Desktop first
+open -a Docker
+
+# Build and run with Docker
+docker-compose up --build
+```
+
+- **Angular frontend**: http://localhost:8080
 - **Node.js backend**: http://localhost:3000
 
 ---
@@ -116,20 +129,32 @@ Optimized for scalability and clarity:
 
 ```
 /GenAI-Scaffold/
-├── packages/
-│   ├── client/   (Angular Application)
+├── packages/               # Monorepo packages
+│   ├── client/            # Angular Application
 │   │   ├── src/app/
-│   │   │   ├── core/       # Singleton services, interceptors, guards
-│   │   │   ├── features/   # Functional modules (e.g., 'prompt')
-│   │   │   └── shared/     # Reusable UI components, pipes, directives
-│   └── server/   (Node.js API)
+│   │   │   ├── core/       # Singleton services, interceptors
+│   │   │   └── features/   # Functional components (text-model, image-model)
+│   │   └── package.json
+│   └── api/               # Node.js API
 │       ├── src/
-│       │   ├── api/        # Routes and controllers
-│       │   ├── config/     # Configuration files (CORS, etc.)
-│       │   └── services/   # Business logic and external API communication
-├── .docker/                # Dockerfiles for production
-├── .env                    # Environment variables (gitignored)
-└── docker-compose.yml      # Container orchestration for production
+│       │   ├── api/        # Routes, controllers, middleware
+│       │   ├── core/       # Base classes (ApiError)
+│       │   ├── models/     # Factory, Registry, Loader
+│       │   └── plugins/    # AI model strategies
+│       └── package.json
+├── .docker/               # Dockerfiles for production
+│   ├── Dockerfile.client  # Angular + Nginx
+│   ├── Dockerfile.server  # Node.js API
+│   └── nginx.conf         # Nginx configuration
+├── docs/                  # Documentation
+│   ├── API.md             # API documentation
+│   ├── DEVELOPMENT.md     # Development guide
+│   ├── DEPLOYMENT.md      # Deployment guide
+│   └── TROUBLESHOOTING.md # Problem solving guide
+├── package.json           # Workspace configuration
+├── package-lock.json      # Dependency lock file
+├── .env.example           # Environment variables template
+└── docker-compose.yml     # Container orchestration
 ```
 
 ---
@@ -154,6 +179,15 @@ Optimized for scalability and clarity:
 
 ---
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[API Documentation](docs/API.md)** - Complete API reference with examples
+- **[Development Guide](docs/DEVELOPMENT.md)** - Setup and development workflow
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common problems and solutions
+
 ## 🐳 Production Deployment with Docker
 
 The project is fully containerized and ready for production deployment.
@@ -165,6 +199,10 @@ The project is fully containerized and ready for production deployment.
 To build and run production containers:
 
 ```bash
+# Start Docker Desktop first (macOS)
+open -a Docker
+
+# Build and run
 docker-compose up --build
 ```
 
