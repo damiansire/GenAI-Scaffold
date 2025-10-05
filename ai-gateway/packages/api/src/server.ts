@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { modelFactory } from './models/factory';
 import { schemaRegistry } from './models/registry';
 import { loadPlugins } from './models/loader';
+import { createModelRoutes } from './api/routes/modelRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -73,6 +74,10 @@ class Server {
         totalModels: modelFactory.getRegisteredModels().length
       });
     });
+
+    // Model routes (authentication, validation, controllers)
+    const modelRoutes = createModelRoutes(modelFactory, schemaRegistry);
+    this.app.use('/api', modelRoutes);
 
     // 404 handler for undefined routes
     this.app.use('*', (req, res) => {

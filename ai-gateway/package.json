@@ -8,10 +8,19 @@
   ],
   "main": "index.js",
   "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=api\" \"npm run start --workspace=client\"",
+    "build": "npm run build --workspace=api && npm run build:prod --workspace=client",
+    "build:api": "npm run build --workspace=api",
+    "build:client": "npm run build:prod --workspace=client",
+    "start:api": "npm run start --workspace=api",
+    "start:client": "npm run start --workspace=client",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
 }
