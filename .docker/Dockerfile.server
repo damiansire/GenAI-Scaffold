@@ -1,0 +1,43 @@
+# Optimized Dockerfile for Node.js Backend Server
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Create a non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S -D -H -u 1001 -h /app -s /sbin/nologin -G nodejs -g nodejs nodejs
+
+# Copy package files first for better layer caching
+COPY packages/api/package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production --silent && \
+    npm cache clean --force
+
+# Copy compiled source code
+COPY packages/api/dist ./dist
+
+# Copy any additional files needed for runtime
+COPY packages/api/.env* ./
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/logs && \
+    chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Start the application
+CMD ["node", "dist/server.js"]
