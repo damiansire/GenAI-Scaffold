@@ -2,6 +2,18 @@
 
 🚧 (DRAFT) This repository is currently under construction.
 
+### ⚠️ Important Disclaimer
+
+> The last time I did this... I got 400 followers on GitHub and an endless number of emails from frustrated developers because their PMs / TLs / Coworkers were forcing them to follow some of my architecture/development practices or asking things like, "What should my developers do in this case?".
+>
+> So, I feel obligated to add this:
+>
+> **Do not force your developers to do things the way they are done in this repo, nor use it to tell them how to do things. Always remember:**
+>
+> - **Ugly code that works** = you move fast, validate, and generate revenue.
+> - **Beautiful code without use** = long code review time, you feel proud, but the business dies.
+> - **Beautiful code that works** = rare, it usually comes after success, not before.
+
 # 🚀 Full-Stack Multimodal AI Application: A Production Blueprint
 
 This repository serves as a **production-ready blueprint** for building modern, scalable, and high-performance web applications using a cutting-edge tech stack: **Angular** for the frontend, **Node.js** for the backend, and **Google Gemini API** for multimodal AI capabilities.
