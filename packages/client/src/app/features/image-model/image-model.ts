@@ -5,7 +5,6 @@ import { ApiService, ModelInvocationResponse } from '../../core/services/api';
 
 @Component({
   selector: 'app-image-model',
-  standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './image-model.html',
   styleUrl: './image-model.scss'

@@ -5,7 +5,6 @@ import { ApiService, ModelInvocationResponse } from '../../core/services/api';
 
 @Component({
   selector: 'app-text-model',
-  standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './text-model.html',
   styleUrl: './text-model.scss'
