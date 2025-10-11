@@ -1,11 +1,10 @@
 import { Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
 import { ApiService, ModelInvocationResponse } from '../../core/services/api';
 
 @Component({
   selector: 'app-image-model',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [ReactiveFormsModule],
   templateUrl: './image-model.html',
   styleUrl: './image-model.scss'
 })
