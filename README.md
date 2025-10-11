@@ -2,17 +2,7 @@
 
 🚧 (DRAFT) This repository is currently under construction.
 
-### ⚠️ Important Disclaimer
-
-> The last time I did this... I got 400 followers on GitHub and an endless number of emails from frustrated developers because their PMs / TLs / Coworkers were forcing them to follow some of my architecture/development practices or asking things like, "What should my developers do in this case?".
->
-> So, I feel obligated to add this:
->
-> **Do not force your developers to do things the way they are done in this repo, nor use it to tell them how to do things. Always remember:**
->
-> - **Ugly code that works** = you move fast, validate, and generate revenue.
-> - **Beautiful code without use** = long code review time, you feel proud, but the business dies.
-> - **Beautiful code that works** = rare, it usually comes after success, not before.
+> **📌 Important:** Before using this repository, please read the [DISCLAIMER.md](docs/DISCLAIMER.md) about how to properly use this as a reference.
 
 # 🚀 Full-Stack Multimodal AI Application: A Production Blueprint
 
@@ -22,13 +12,7 @@ The project is built from the ground up following strict industry best practices
 
 ---
 
-# 🤔 Why Not Microservices?
-
-This project intentionally avoids a microservices architecture. While microservices can offer benefits in extremely large, distributed systems, they also introduce significant complexity in deployment, observability, and inter-service communication.
-
-For this application, a **modular monolithic architecture** provides a better balance of **maintainability, performance, and simplicity**, especially in early or medium-scale production environments. It allows independent development and testing of the frontend and backend within a single monorepo, without the overhead of managing multiple networked services.
-
-**Moreover, if you ever reach a point where migrating to a microservices architecture becomes necessary, you'll likely already have the technical maturity and understanding required to refactor this system into microservices.**
+> **🏗️ Architecture:** This project uses a modular monolithic architecture. Read [ARCHITECTURE.md](docs/ARCHITECTURE.md) to understand the design decisions and why we chose this approach over microservices.
 
 ---
 
@@ -266,10 +250,18 @@ Optimized for scalability and clarity:
 
 Comprehensive documentation is available in the `docs/` directory:
 
+- **[Quick Start - Nano Banana](docs/QUICKSTART-NANO-BANANA.md)** - 🍌 Quick guide to get started with image generation
+- **[Nano Banana Documentation](docs/NANO-BANANA.md)** - Complete guide for Gemini Image Generation features
 - **[API Documentation](docs/API.md)** - Complete API reference with examples
 - **[Development Guide](docs/DEVELOPMENT.md)** - Setup and development workflow
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment instructions
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common problems and solutions
+
+### Additional Resources
+
+- **[Setup Guide](docs/SETUP.md)** - Detailed installation and configuration instructions
+- **[Architecture Decisions](docs/ARCHITECTURE.md)** - Why we chose a modular monolith over microservices
+- **[Disclaimer](docs/DISCLAIMER.md)** - Important notes about using this repository
 
 ## 🐳 Production Deployment with Docker
 
