@@ -1,5 +1,5 @@
 <section class="form-section">
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="image-form">
+  <form [formGroup]="form()" (ngSubmit)="onSubmit()" class="image-form">
     <div class="form-group">
       <label for="language" class="form-label">Language</label>
       <select
@@ -93,9 +93,9 @@
       <button
         type="submit"
         class="btn btn-primary"
-        [disabled]="loading || !form.valid || !hasFile"
+        [disabled]="loading() || form().invalid || !hasFile()"
       >
-        @if (loading) {
+        @if (loading()) {
           <span class="spinner"></span>
           Processing...
         } @else {
@@ -107,7 +107,7 @@
         type="button"
         class="btn btn-secondary"
         (click)="onReset()"
-        [disabled]="loading"
+        [disabled]="loading()"
       >
         Reset
       </button>

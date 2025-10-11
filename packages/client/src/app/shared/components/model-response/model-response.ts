@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ModelInvocationResponse } from '../../../core/services/api';
 
@@ -6,12 +6,13 @@ import { ModelInvocationResponse } from '../../../core/services/api';
   selector: 'app-model-response',
   imports: [DatePipe],
   templateUrl: './model-response.html',
-  styleUrl: './model-response.scss'
+  styleUrl: './model-response.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ModelResponseComponent {
-  @Input() loading = false;
-  @Input() error: string | null = null;
-  @Input() response: ModelInvocationResponse | null = null;
-  @Input() loadingMessage = 'Processing...';
+  loading = input(false);
+  error = input<string | null>(null);
+  response = input<ModelInvocationResponse | null>(null);
+  loadingMessage = input('Processing...');
 }
 

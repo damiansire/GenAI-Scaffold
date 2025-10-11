@@ -1,22 +1,23 @@
-import { Component, Input, Output, EventEmitter, ElementRef, ViewChild } from '@angular/core';
+import { Component, input, output, viewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-file-upload',
   imports: [],
   templateUrl: './file-upload.html',
-  styleUrl: './file-upload.scss'
+  styleUrl: './file-upload.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FileUploadComponent {
-  @Input() accept = 'image/*';
-  @Input() maxSizeMB = 10;
-  @Input() allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
-  @Input() selectedFile: File | null = null;
+  accept = input('image/*');
+  maxSizeMB = input(10);
+  allowedTypes = input<string[]>(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']);
+  selectedFile = input<File | null>(null);
   
-  @Output() fileSelected = new EventEmitter<File>();
-  @Output() fileCleared = new EventEmitter<void>();
-  @Output() error = new EventEmitter<string>();
+  fileSelected = output<File>();
+  fileCleared = output<void>();
+  error = output<string>();
   
-  @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
+  fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -25,16 +26,16 @@ export class FileUploadComponent {
       const file = input.files[0];
       
       // Validate file type
-      if (!this.allowedTypes.includes(file.type)) {
-        const allowedExtensions = this.allowedTypes.map(type => type.split('/')[1]).join(', ');
+      if (!this.allowedTypes().includes(file.type)) {
+        const allowedExtensions = this.allowedTypes().map(type => type.split('/')[1]).join(', ');
         this.error.emit(`Please select a valid file (${allowedExtensions.toUpperCase()})`);
         return;
       }
 
       // Validate file size
-      const maxSize = this.maxSizeMB * 1024 * 1024;
+      const maxSize = this.maxSizeMB() * 1024 * 1024;
       if (file.size > maxSize) {
-        this.error.emit(`File size must not exceed ${this.maxSizeMB}MB`);
+        this.error.emit(`File size must not exceed ${this.maxSizeMB()}MB`);
         return;
       }
 
@@ -43,8 +44,9 @@ export class FileUploadComponent {
   }
 
   clearFile(): void {
-    if (this.fileInput) {
-      this.fileInput.nativeElement.value = '';
+    const inputEl = this.fileInput();
+    if (inputEl) {
+      inputEl.nativeElement.value = '';
     }
     this.fileCleared.emit();
   }
@@ -64,6 +66,13 @@ export class FileUploadComponent {
       return '🖼️';
     }
     return '📄';
+  }
+
+  getAllowedTypesString(): string {
+    return this.allowedTypes()
+      .map(type => type.split('/')[1])
+      .join(', ')
+      .toUpperCase();
   }
 }
 

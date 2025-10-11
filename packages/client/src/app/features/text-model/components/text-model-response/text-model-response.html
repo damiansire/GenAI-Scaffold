@@ -4,28 +4,27 @@
   <div class="response-content">
     <h4>Generated Text:</h4>
     <div class="text-output">
-      {{ response?.data?.result?.text || 'No text generated' }}
+      {{ response()?.data?.result?.text || 'No text generated' }}
     </div>
   </div>
 
-  @if (response?.data?.result?.usage) {
+  @if (response()?.data?.result?.usage) {
     <div class="usage-info">
       <h4>Usage Information:</h4>
       <div class="usage-stats">
         <div class="stat">
           <span class="stat-label">Prompt Tokens:</span>
-          <span class="stat-value">{{ response.data.result.usage.promptTokens }}</span>
+          <span class="stat-value">{{ response()?.data?.result?.usage?.promptTokens }}</span>
         </div>
         <div class="stat">
           <span class="stat-label">Completion Tokens:</span>
-          <span class="stat-value">{{ response.data.result.usage.completionTokens }}</span>
+          <span class="stat-value">{{ response()?.data?.result?.usage?.completionTokens }}</span>
         </div>
         <div class="stat">
           <span class="stat-label">Total Tokens:</span>
-          <span class="stat-value">{{ response.data.result.usage.totalTokens }}</span>
+          <span class="stat-value">{{ response()?.data?.result?.usage?.totalTokens }}</span>
         </div>
       </div>
     </div>
   }
 </div>
-

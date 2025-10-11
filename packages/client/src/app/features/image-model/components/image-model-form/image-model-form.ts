@@ -1,21 +1,22 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-image-model-form',
   imports: [ReactiveFormsModule],
   templateUrl: './image-model-form.html',
-  styleUrl: './image-model-form.scss'
+  styleUrl: './image-model-form.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ImageModelFormComponent {
-  @Input() form!: FormGroup;
-  @Input() loading = false;
-  @Input() hasFile = false;
-  @Output() submitForm = new EventEmitter<void>();
-  @Output() resetForm = new EventEmitter<void>();
+  form = input.required<FormGroup>();
+  loading = input(false);
+  hasFile = input(false);
+  submitForm = output<void>();
+  resetForm = output<void>();
 
   onSubmit(): void {
-    if (this.form.valid && this.hasFile) {
+    if (this.form().valid && this.hasFile()) {
       this.submitForm.emit();
     } else {
       this.markFormGroupTouched();
@@ -30,8 +31,8 @@ export class ImageModelFormComponent {
    * Mark all form controls as touched to show validation errors
    */
   private markFormGroupTouched(): void {
-    Object.keys(this.form.controls).forEach(key => {
-      const control = this.form.get(key);
+    Object.keys(this.form().controls).forEach(key => {
+      const control = this.form().get(key);
       control?.markAsTouched();
     });
   }
@@ -40,7 +41,7 @@ export class ImageModelFormComponent {
    * Get validation error message for a form control
    */
   getErrorMessage(controlName: string): string | null {
-    const control = this.form.get(controlName);
+    const control = this.form().get(controlName);
     
     if (control?.errors && control.touched) {
       if (control.errors['required']) {
@@ -64,7 +65,7 @@ export class ImageModelFormComponent {
    * Check if a form control has validation errors
    */
   hasError(controlName: string): boolean {
-    const control = this.form.get(controlName);
+    const control = this.form().get(controlName);
     return !!(control?.errors && control.touched);
   }
 }

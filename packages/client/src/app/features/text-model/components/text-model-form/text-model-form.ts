@@ -1,20 +1,21 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { ReactiveFormsModule, FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-text-model-form',
   imports: [ReactiveFormsModule],
   templateUrl: './text-model-form.html',
-  styleUrl: './text-model-form.scss'
+  styleUrl: './text-model-form.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TextModelFormComponent {
-  @Input() form!: FormGroup;
-  @Input() loading = false;
-  @Output() submitForm = new EventEmitter<void>();
-  @Output() resetForm = new EventEmitter<void>();
+  form = input.required<FormGroup>();
+  loading = input(false);
+  submitForm = output<void>();
+  resetForm = output<void>();
 
   onSubmit(): void {
-    if (this.form.valid) {
+    if (this.form().valid) {
       this.submitForm.emit();
     } else {
       this.markFormGroupTouched();
@@ -29,8 +30,8 @@ export class TextModelFormComponent {
    * Mark all form controls as touched to show validation errors
    */
   private markFormGroupTouched(): void {
-    Object.keys(this.form.controls).forEach(key => {
-      const control = this.form.get(key);
+    Object.keys(this.form().controls).forEach(key => {
+      const control = this.form().get(key);
       control?.markAsTouched();
     });
   }
@@ -39,7 +40,7 @@ export class TextModelFormComponent {
    * Get validation error message for a form control
    */
   getErrorMessage(controlName: string): string | null {
-    const control = this.form.get(controlName);
+    const control = this.form().get(controlName);
     
     if (control?.errors && control.touched) {
       if (control.errors['required']) {
@@ -66,7 +67,7 @@ export class TextModelFormComponent {
    * Check if a form control has validation errors
    */
   hasError(controlName: string): boolean {
-    const control = this.form.get(controlName);
+    const control = this.form().get(controlName);
     return !!(control?.errors && control.touched);
   }
 }

@@ -1,14 +1,15 @@
-import { Component, Input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { ModelInvocationResponse } from '../../../../core/services/api';
 
 @Component({
   selector: 'app-image-model-response',
   imports: [],
   templateUrl: './image-model-response.html',
-  styleUrl: './image-model-response.scss'
+  styleUrl: './image-model-response.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ImageModelResponseComponent {
-  @Input() response: ModelInvocationResponse | null = null;
+  response = input<ModelInvocationResponse | null>(null);
 
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';

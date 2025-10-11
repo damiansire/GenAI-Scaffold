@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { ApiService, ModelInvocationResponse } from '../../core/services/api';
 import { TextModelFormComponent } from './components/text-model-form/text-model-form';
@@ -9,7 +9,8 @@ import { ModelResponseComponent } from '../../shared/components/model-response/m
   selector: 'app-text-model',
   imports: [TextModelFormComponent, TextModelResponseComponent, ModelResponseComponent],
   templateUrl: './text-model.html',
-  styleUrl: './text-model.scss'
+  styleUrl: './text-model.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TextModelComponent {
   private readonly apiService = inject(ApiService);

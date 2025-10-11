@@ -1,5 +1,5 @@
 <section class="form-section">
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="text-form">
+  <form [formGroup]="form()" (ngSubmit)="onSubmit()" class="text-form">
     <div class="form-group">
       <label for="prompt" class="form-label">Prompt *</label>
       <textarea
@@ -89,9 +89,9 @@
       <button
         type="submit"
         class="btn btn-primary"
-        [disabled]="loading || !form.valid"
+        [disabled]="loading() || form().invalid"
       >
-        @if (loading) {
+        @if (loading()) {
           <span class="spinner"></span>
           Processing...
         } @else {
@@ -103,7 +103,7 @@
         type="button"
         class="btn btn-secondary"
         (click)="onReset()"
-        [disabled]="loading"
+        [disabled]="loading()"
       >
         Reset
       </button>
