@@ -115,7 +115,7 @@ export class ModelStrategy implements IModelStrategy<GeminiImageGenInput, ModelO
       }
 
       // Build the content parts for the request
-      const contents = this.buildContentParts(params);
+      const parts = this.buildContentParts(params);
 
       // Configure the request
       const config: any = {
@@ -136,7 +136,10 @@ export class ModelStrategy implements IModelStrategy<GeminiImageGenInput, ModelO
       // Generate content
       console.log('🚀 Calling Gemini API...');
       const result = await model.generateContent({
-        contents,
+        contents: [{
+          role: 'user',
+          parts
+        }],
         generationConfig: config
       });
 

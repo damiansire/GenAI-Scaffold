@@ -111,7 +111,7 @@ function getValidApiKeys(): Array<{ id: string; key: string; permissions: string
 
   // Fallback to a default API key if no keys are configured
   if (validKeys.length === 0) {
-    const defaultKey = process.env.DEFAULT_API_KEY || 'default-key-change-in-production';
+    const defaultKey = process.env['DEFAULT_API_KEY'] || 'default-key-change-in-production';
     validKeys.push({
       id: 'default',
       key: defaultKey,

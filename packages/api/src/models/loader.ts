@@ -1,7 +1,12 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { ModelFactory } from './factory.js';
 import { SchemaRegistry } from './registry.js';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Interface for plugin module exports
@@ -26,7 +31,9 @@ export async function loadPlugins(
   factory: ModelFactory,
   schemaRegistry: SchemaRegistry
 ): Promise<void> {
-  const pluginsDir = path.join(process.cwd(), 'src', 'plugins');
+  // In production (compiled), plugins are in dist/plugins relative to this file
+  // In development, they're in src/plugins
+  const pluginsDir = path.join(__dirname, '..', 'plugins');
   
   try {
     // Check if plugins directory exists
@@ -82,10 +89,11 @@ async function loadSinglePlugin(
   factory: ModelFactory,
   schemaRegistry: SchemaRegistry
 ): Promise<void> {
-  const pluginPath = path.join(process.cwd(), 'src', 'plugins', pluginDir);
+  // Path relative to this compiled file
+  const pluginPath = path.join(__dirname, '..', 'plugins', pluginDir);
   
-  // Try to import index.ts first, then index.js
-  const possibleFiles = ['index.ts', 'index.js'];
+  // Try to import index.js (compiled) first, then index.ts (development)
+  const possibleFiles = ['index.js', 'index.ts'];
   let modulePath: string | null = null;
   
   for (const filename of possibleFiles) {
@@ -101,11 +109,13 @@ async function loadSinglePlugin(
   }
 
   if (!modulePath) {
-    throw new Error(`No index.ts or index.js found in plugin directory: ${pluginDir}`);
+    throw new Error(`No index.js or index.ts found in plugin directory: ${pluginDir}`);
   }
 
   // Dynamic import of the plugin module
-  const pluginModule = await import(modulePath);
+  // Use file:// URL for dynamic imports
+  const moduleUrl = new URL(`file://${modulePath}`);
+  const pluginModule = await import(moduleUrl.href);
   
   // Validate plugin module structure
   validatePluginModule(pluginModule, pluginDir);
