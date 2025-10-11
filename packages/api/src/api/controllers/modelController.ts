@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ModelFactory } from '../../models/factory.js';
-import { ProcessContext } from '../../models/strategy.interface.js';
+import { ProcessContext, ModelMetadata } from '../../models/strategy.interface.js';
 import { ApiError } from '../../core/ApiError.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
@@ -17,11 +17,7 @@ interface ModelInvocationRequest {
 interface ModelInvocationResponse {
   success: boolean;
   data?: any;
-  metadata?: {
-    modelId: string;
-    processingTime: number;
-    timestamp: string;
-  };
+  metadata?: ModelMetadata;
   error?: string;
 }
 
