@@ -9,12 +9,22 @@ export const routes: Routes = [
   {
     path: 'text-model',
     loadComponent: () => import('./features/text-model/text-model').then(m => m.TextModelComponent),
-    title: 'Text Model - AI Gateway'
+    title: 'Text Generation - AI Gateway'
   },
   {
-    path: 'image-model',
+    path: 'image-ocr',
     loadComponent: () => import('./features/image-model/image-model').then(m => m.ImageModelComponent),
-    title: 'Image Model - AI Gateway'
+    title: 'Image OCR - AI Gateway'
+  },
+  {
+    path: 'image-generation',
+    loadComponent: () => import('./features/image-generation/image-generation').then(m => m.ImageGenerationComponent),
+    title: 'Image Generation - Nano Banana'
+  },
+  // Legacy redirect
+  {
+    path: 'image-model',
+    redirectTo: '/image-ocr'
   },
   {
     path: '**',

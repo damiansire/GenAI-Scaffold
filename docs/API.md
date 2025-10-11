@@ -344,6 +344,186 @@ curl -X POST http://localhost:3000/api/models/google-vision-ocr/invoke \
 }
 ```
 
+---
+
+## 🎨 Gemini Image Generation (Nano Banana)
+
+### Endpoint
+
+```http
+POST /api/models/gemini-image-gen/invoke
+```
+
+### Descripción
+
+Genera y edita imágenes usando Gemini 2.5 Flash Image. Soporta múltiples modos:
+
+- **Text-to-Image**: Generación desde descripciones de texto
+- **Image Editing**: Modificación de imágenes existentes
+- **Style Transfer**: Transferencia de estilos artísticos
+- **Multi-Image Composition**: Composición de múltiples imágenes
+
+### Headers Requeridos
+
+```http
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+### Parámetros del Body
+
+| Parámetro            | Tipo   | Requerido | Descripción                                                    |
+| -------------------- | ------ | --------- | -------------------------------------------------------------- |
+| `prompt`             | string | Sí        | Descripción detallada de la imagen a generar o editar          |
+| `aspectRatio`        | string | No        | Ratio de aspecto: `1:1`, `16:9`, `9:16`, etc. (default: `1:1`) |
+| `responseModalities` | array  | No        | Modalidades de salida: `["Image", "Text"]`                     |
+| `inputImages`        | array  | No        | Imágenes de entrada para edición (base64)                      |
+
+### Aspect Ratios Disponibles
+
+| Ratio  | Resolución | Uso Típico                |
+| ------ | ---------- | ------------------------- |
+| `1:1`  | 1024×1024  | Square, Social Media      |
+| `16:9` | 1344×768   | Widescreen, Presentations |
+| `9:16` | 768×1344   | Mobile, Stories           |
+| `4:3`  | 1184×864   | Classic Photos            |
+| `3:2`  | 1248×832   | Photography               |
+| `21:9` | 1536×672   | Ultrawide, Cinematic      |
+
+### Ejemplo 1: Text-to-Image (Generación Simple)
+
+```bash
+curl -X POST http://localhost:3000/api/models/gemini-image-gen/invoke \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "A photorealistic portrait of an elderly Japanese ceramicist with deep wrinkles and a warm smile, inspecting a freshly glazed tea bowl. Soft golden hour light, 85mm lens with bokeh.",
+    "aspectRatio": "3:2",
+    "responseModalities": ["Image", "Text"]
+  }'
+```
+
+**Respuesta:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "result": {
+      "images": [
+        {
+          "data": "iVBORw0KGgoAAAANSUhEUg...", // base64 image data
+          "mimeType": "image/png"
+        }
+      ],
+      "text": "A serene portrait capturing the wisdom and craftsmanship..."
+    },
+    "metadata": {
+      "processingTime": 2500,
+      "modelVersion": "gemini-2.5-flash-image",
+      "apiProvider": "Google Gemini",
+      "aspectRatio": "3:2",
+      "mode": "text-to-image",
+      "imagesGenerated": 1
+    }
+  },
+  "metadata": {
+    "modelId": "gemini-image-gen",
+    "processingTime": 2500,
+    "timestamp": "2025-10-11T10:30:00.000Z"
+  }
+}
+```
+
+### Ejemplo 2: Image Editing (Con Imagen de Entrada)
+
+```bash
+curl -X POST http://localhost:3000/api/models/gemini-image-gen/invoke \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Add a small knitted wizard hat on the cat'\''s head. Make it look comfortable and not falling off.",
+    "aspectRatio": "1:1",
+    "inputImages": [
+      {
+        "data": "/9j/4AAQSkZJRgABAQEA...",
+        "mimeType": "image/jpeg"
+      }
+    ]
+  }'
+```
+
+### Ejemplo 3: Logo con Texto de Alta Fidelidad
+
+```bash
+curl -X POST http://localhost:3000/api/models/gemini-image-gen/invoke \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Create a modern minimalist logo for a coffee shop called \"The Daily Grind\". Clean bold sans-serif font with a stylized coffee bean icon integrated with the text. Black and white.",
+    "aspectRatio": "1:1",
+    "responseModalities": ["Image"]
+  }'
+```
+
+### Prompts de Ejemplo por Categoría
+
+**Photorealistic:**
+
+```
+A photorealistic close-up portrait of an elderly Japanese ceramicist with deep, sun-etched wrinkles and a warm, knowing smile. He is carefully inspecting a freshly glazed tea bowl. The setting is his rustic, sun-drenched workshop with pottery wheels and shelves of clay pots in the background. The scene is illuminated by soft, golden hour light streaming through a window. Captured with an 85mm portrait lens, resulting in a soft, blurred background (bokeh).
+```
+
+**Illustration/Sticker:**
+
+```
+A kawaii-style sticker of a happy red panda wearing a tiny bamboo hat. It's munching on a green bamboo leaf. The design features bold, clean outlines, simple cel-shading, and a vibrant color palette. The background must be white.
+```
+
+**Product Photography:**
+
+```
+A high-resolution, studio-lit product photograph of a minimalist ceramic coffee mug in matte black, presented on a polished concrete surface. The lighting is a three-point softbox setup designed to create soft, diffused highlights. The camera angle is a slightly elevated 45-degree shot. Ultra-realistic, with sharp focus on the steam rising from the coffee.
+```
+
+**Comic/Sequential Art:**
+
+```
+A single comic book panel in a gritty, noir art style with high-contrast black and white inks. In the foreground, a detective in a trench coat stands under a flickering streetlamp, rain soaking his shoulders. In the background, the neon sign of a desolate bar reflects in a puddle. A caption box at the top reads "The city was a tough place to keep secrets."
+```
+
+### Mejores Prácticas de Prompts
+
+1. **Sé Hiper-Específico**: Más detalles = más control
+
+   - ❌ "fantasy armor"
+   - ✅ "ornate elven plate armor, etched with silver leaf patterns, with a high collar and pauldrons shaped like falcon wings"
+
+2. **Proporciona Contexto**: Explica el propósito
+
+   - ✅ "Create a logo for a high-end, minimalist skincare brand"
+
+3. **Itera y Refina**: Usa el modo conversacional
+
+   - "That's great, but can you make the lighting a bit warmer?"
+   - "Keep everything the same, but change the character's expression to be more serious."
+
+4. **Instrucciones Paso a Paso**: Para escenas complejas
+
+   - "First, create a background of a serene, misty forest at dawn. Then, in the foreground, add a moss-covered ancient stone altar. Finally, place a single, glowing sword on top of the altar."
+
+5. **Controla la Cámara**: Usa términos fotográficos
+   - wide-angle shot, macro shot, low-angle perspective, 85mm portrait lens, bokeh
+
+### Limitaciones
+
+- Funciona mejor con hasta 3 imágenes de entrada
+- Idiomas recomendados: EN, es-MX, ja-JP, zh-CN, hi-IN
+- No soporta audio o video como entrada
+- Todas las imágenes incluyen marca de agua SynthID
+
+---
+
 ## ⚠️ Códigos de Error
 
 ### Errores de Autenticación

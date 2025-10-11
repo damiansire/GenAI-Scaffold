@@ -1,0 +1,163 @@
+<div class="image-gen-container">
+  <header class="header">
+    <h1>🍌 Nano Banana - Image Generation</h1>
+    <p>Generate and edit images with Gemini 2.5 Flash</p>
+  </header>
+
+  <div class="content">
+    <div class="left-column">
+      <!-- Mode Indicator -->
+      <div class="mode-section">
+        <span class="mode-badge" [class.text-mode]="generationMode() === 'text-to-image'" [class.edit-mode]="generationMode() === 'image-editing'">
+          @if (generationMode() === 'text-to-image') {
+            <span>📝 Text-to-Image Mode</span>
+          } @else {
+            <span>✏️ Image Editing Mode</span>
+          }
+        </span>
+      </div>
+
+      <!-- File Upload for Image Editing -->
+      @if (generationMode() === 'image-editing' || selectedFiles().length > 0) {
+        <div class="upload-section">
+          <h3>📸 Input Images (For Editing/Composition)</h3>
+          <app-file-upload
+            [selectedFile]="selectedFiles()[0] || null"
+            (fileSelected)="onFileSelected($event)"
+            (fileCleared)="onFileCleared()"
+            (error)="onFileError($event)"
+          />
+        </div>
+      }
+
+      <!-- Form Section -->
+      <section class="form-section">
+        <form [formGroup]="imageGenForm" (ngSubmit)="onSubmit()" class="image-gen-form">
+          <div class="form-group">
+            <label for="prompt" class="form-label">Prompt *</label>
+            <textarea
+              id="prompt"
+              formControlName="prompt"
+              class="form-control"
+              [class.error]="hasError('prompt')"
+              placeholder="Describe the image you want to generate or how to edit it..."
+              rows="5"
+            ></textarea>
+            @if (hasError('prompt')) {
+              <div class="error-message">{{ getErrorMessage('prompt') }}</div>
+            }
+            <div class="prompt-tip">
+              💡 <strong>Tip:</strong> Describe the scene in detail, not just keywords. Include lighting, style, camera angles for best results.
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="aspectRatio" class="form-label">Aspect Ratio</label>
+              <select
+                id="aspectRatio"
+                formControlName="aspectRatio"
+                class="form-control"
+              >
+                @for (ratio of aspectRatios; track ratio.value) {
+                  <option [value]="ratio.value">{{ ratio.label }} - {{ ratio.resolution }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Example Prompts -->
+          <div class="examples-section">
+            <h4>📋 Example Prompts</h4>
+            <div class="examples-grid">
+              @for (example of examples; track example.category) {
+                <button
+                  type="button"
+                  class="example-card"
+                  (click)="setExamplePrompt(example.prompt)"
+                  [disabled]="imageGenResource.isLoading()"
+                >
+                  <div class="example-category">{{ example.category }}</div>
+                  <div class="example-text">{{ example.prompt.substring(0, 80) }}...</div>
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="imageGenResource.isLoading() || imageGenForm.invalid"
+            >
+              @if (imageGenResource.isLoading()) {
+                <span class="spinner"></span>
+                Generating...
+              } @else {
+                🎨 Generate Image
+              }
+            </button>
+            
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="resetForm()"
+              [disabled]="imageGenResource.isLoading()"
+            >
+              Reset
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Response Section -->
+    <div class="right-column">
+      <app-model-response
+        [loading]="imageGenResource.isLoading()"
+        [error]="fileError() || imageGenResource.error()?.message || null"
+        [response]="imageGenResource.value() ?? null"
+        loadingMessage="🎨 Generating your masterpiece with Gemini..."
+      >
+        @if (imageGenResource.value()?.data?.result) {
+          <div class="image-gen-response">
+            <h3>✨ Generated Image</h3>
+            
+            @if (imageGenResource.value()?.data?.result?.text) {
+              <div class="description-box">
+                <h4>📝 Description</h4>
+                <p>{{ imageGenResource.value()?.data?.result?.text }}</p>
+              </div>
+            }
+
+            @if (imageGenResource.value()?.data?.result?.images && imageGenResource.value()!.data.result.images.length > 0) {
+              <div class="images-container">
+                <h4>🖼️ Generated Images</h4>
+                <div class="images-grid">
+                  @for (image of imageGenResource.value()!.data.result.images; track $index) {
+                    <div class="image-card">
+                      <img 
+                        [src]="'data:' + image.mimeType + ';base64,' + image.data" 
+                        [alt]="'Generated image ' + ($index + 1)"
+                        class="generated-image"
+                      />
+                      <div class="image-actions">
+                        <a 
+                          [href]="'data:' + image.mimeType + ';base64,' + image.data" 
+                          [download]="'gemini-generated-' + ($index + 1) + '.png'"
+                          class="btn-download"
+                        >
+                          💾 Download
+                        </a>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </app-model-response>
+    </div>
+  </div>
+</div>

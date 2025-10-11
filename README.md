@@ -103,6 +103,10 @@ Edit `.env` and add your Google Gemini API key:
 GEMINI_API_KEY=YOUR_API_KEY_HERE
 ```
 
+**Get your Gemini API key here:** https://aistudio.google.com/app/apikey
+
+> **Note:** The Gemini API key is required for the **Image Generation (Nano Banana)** feature. Without it, you can still use the Text Generation and Image OCR features in demo mode.
+
 Install dependencies (npm Workspaces will handle both frontend and backend):
 
 ```bash
@@ -132,6 +136,58 @@ docker-compose up --build
 
 - **Angular frontend**: http://localhost:8080
 - **Node.js backend**: http://localhost:3000
+
+---
+
+## 🌟 AI Features
+
+This platform includes three powerful AI capabilities powered by Google's models:
+
+### 📝 Text Generation (Google Text Bison)
+
+- Generate creative and contextual text from prompts
+- Configurable parameters: max tokens, temperature, top-p, top-k
+- Real-time streaming responses
+- Token usage tracking
+
+### 🔍 Image OCR (Google Vision OCR)
+
+- Extract text from images with high accuracy
+- Multi-language support (10+ languages)
+- Bounding box detection for text positioning
+- Confidence scores for each annotation
+- Supports JPEG, PNG, GIF, WEBP, BMP formats
+
+### 🎨 Image Generation - Nano Banana (Gemini 2.5 Flash Image)
+
+**NEW!** Generate and edit images using Gemini's native image generation:
+
+**Modes:**
+
+- **Text-to-Image**: Create images from descriptive prompts
+- **Image Editing**: Modify existing images with text instructions
+- **Style Transfer**: Apply artistic styles to photos
+- **Multi-Image Composition**: Combine elements from multiple images
+- **Iterative Refinement**: Conversational image editing
+
+**Capabilities:**
+
+- 10 aspect ratios (Square, Portrait, Landscape, Widescreen, etc.)
+- High-fidelity text rendering in images (logos, diagrams, posters)
+- Photorealistic rendering with advanced lighting and camera controls
+- Illustration and sticker generation
+- Product mockups and commercial photography
+- Sequential art (comic panels, storyboards)
+
+**Prompting Best Practices:**
+
+- Describe scenes narratively, not just keywords
+- Use photography terms for realism (lens type, lighting, camera angle)
+- Be hyper-specific about details
+- Iterate conversationally for refinement
+- Use step-by-step instructions for complex scenes
+
+**Note:** All generated images include a SynthID watermark.
 
 ---
 
