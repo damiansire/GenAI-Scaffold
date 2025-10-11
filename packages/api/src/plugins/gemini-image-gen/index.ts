@@ -99,7 +99,7 @@ export class ModelStrategy implements IModelStrategy<GeminiImageGenInput, ModelO
    */
   async process(
     params: GeminiImageGenInput,
-    context: ProcessContext
+    _context: ProcessContext
   ): Promise<ModelOutput<GeminiImageGenOutput>> {
     const startTime = Date.now();
 
@@ -166,7 +166,6 @@ export class ModelStrategy implements IModelStrategy<GeminiImageGenInput, ModelO
         }
       };
     } catch (error) {
-      const processingTime = Date.now() - startTime;
       console.error('❌ Gemini Image Generation error:', error);
 
       if (error instanceof Error) {
@@ -208,8 +207,7 @@ export class ModelStrategy implements IModelStrategy<GeminiImageGenInput, ModelO
    */
   private extractOutputFromResponse(response: any): GeminiImageGenOutput {
     const output: GeminiImageGenOutput = {
-      images: [],
-      text: undefined
+      images: []
     };
 
     // Process all candidates (usually just one)
@@ -241,23 +239,4 @@ export class ModelStrategy implements IModelStrategy<GeminiImageGenInput, ModelO
     return output;
   }
 
-  /**
-   * Get image resolution from aspect ratio
-   */
-  private getResolutionFromAspectRatio(aspectRatio: string): { width: number; height: number } {
-    const resolutions: Record<string, { width: number; height: number }> = {
-      '1:1': { width: 1024, height: 1024 },
-      '2:3': { width: 832, height: 1248 },
-      '3:2': { width: 1248, height: 832 },
-      '3:4': { width: 864, height: 1184 },
-      '4:3': { width: 1184, height: 864 },
-      '4:5': { width: 896, height: 1152 },
-      '5:4': { width: 1152, height: 896 },
-      '9:16': { width: 768, height: 1344 },
-      '16:9': { width: 1344, height: 768 },
-      '21:9': { width: 1536, height: 672 }
-    };
-
-    return resolutions[aspectRatio] || resolutions['1:1'];
-  }
 }

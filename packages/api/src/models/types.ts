@@ -3,9 +3,9 @@
  */
 export type ProcessContext = {
   /** API key for authentication with external services */
-  apiKey?: string;
+  apiKey?: string | undefined;
   /** User identifier for tracking and authorization */
-  userId?: string;
+  userId?: string | undefined;
 };
 
 /**
