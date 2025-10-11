@@ -1,0 +1,117 @@
+<section class="form-section">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="image-form">
+    <div class="form-group">
+      <label for="language" class="form-label">Language</label>
+      <select
+        id="language"
+        formControlName="language"
+        class="form-control"
+        [class.error]="hasError('language')"
+      >
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="it">Italian</option>
+        <option value="pt">Portuguese</option>
+        <option value="ru">Russian</option>
+        <option value="zh">Chinese</option>
+        <option value="ja">Japanese</option>
+        <option value="ko">Korean</option>
+      </select>
+      @if (hasError('language')) {
+        <div class="error-message">{{ getErrorMessage('language') }}</div>
+      }
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="maxResults" class="form-label">Max Results</label>
+        <input
+          type="number"
+          id="maxResults"
+          formControlName="maxResults"
+          class="form-control"
+          [class.error]="hasError('maxResults')"
+          min="1"
+          max="100"
+        />
+        @if (hasError('maxResults')) {
+          <div class="error-message">{{ getErrorMessage('maxResults') }}</div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="confidenceThreshold" class="form-label">Confidence Threshold</label>
+        <input
+          type="number"
+          id="confidenceThreshold"
+          formControlName="confidenceThreshold"
+          class="form-control"
+          [class.error]="hasError('confidenceThreshold')"
+          min="0.0"
+          max="1.0"
+          step="0.1"
+        />
+        @if (hasError('confidenceThreshold')) {
+          <div class="error-message">{{ getErrorMessage('confidenceThreshold') }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            formControlName="includeBoundingBoxes"
+            class="checkbox-input"
+          />
+          <span class="checkbox-text">Include Bounding Boxes</span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="outputFormat" class="form-label">Output Format</label>
+        <select
+          id="outputFormat"
+          formControlName="outputFormat"
+          class="form-control"
+          [class.error]="hasError('outputFormat')"
+        >
+          <option value="structured">Structured</option>
+          <option value="text">Text Only</option>
+          <option value="json">JSON</option>
+        </select>
+        @if (hasError('outputFormat')) {
+          <div class="error-message">{{ getErrorMessage('outputFormat') }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="loading || !form.valid || !hasFile"
+      >
+        @if (loading) {
+          <span class="spinner"></span>
+          Processing...
+        } @else {
+          Extract Text
+        }
+      </button>
+      
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onReset()"
+        [disabled]="loading"
+      >
+        Reset
+      </button>
+    </div>
+  </form>
+</section>
+

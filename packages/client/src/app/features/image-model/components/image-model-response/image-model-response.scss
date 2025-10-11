@@ -1,0 +1,118 @@
+.image-response {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #333;
+  }
+
+  h4 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #555;
+  }
+}
+
+.response-content {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.text-output {
+  padding: 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-height: 100px;
+}
+
+.annotations-info {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.annotations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.annotation-item {
+  padding: 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.annotation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.annotation-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.annotation-confidence {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4285f4;
+  background: #e8f0fe;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.annotation-bounds {
+  font-size: 12px;
+  color: #666;
+}
+
+.image-info {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.image-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 18px;
+  color: #4285f4;
+  font-weight: 600;
+}
+

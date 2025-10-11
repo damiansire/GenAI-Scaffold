@@ -1,0 +1,37 @@
+<section class="response-section">
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner-large"></div>
+      <p>{{ loadingMessage }}</p>
+    </div>
+  }
+
+  @if (error) {
+    <div class="error-state">
+      <h3>❌ Error</h3>
+      <p>{{ error }}</p>
+    </div>
+  }
+
+  @if (response && !loading) {
+    <div class="response-state">
+      <div class="response-meta">
+        <div class="meta-item">
+          <span class="meta-label">Processing Time:</span>
+          <span class="meta-value">{{ response.metadata?.processingTime }}ms</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Model:</span>
+          <span class="meta-value">{{ response.metadata?.modelId }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Timestamp:</span>
+          <span class="meta-value">{{ response.metadata?.timestamp | date:'medium' }}</span>
+        </div>
+      </div>
+
+      <ng-content></ng-content>
+    </div>
+  }
+</section>
+

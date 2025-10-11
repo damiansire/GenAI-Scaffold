@@ -1,0 +1,57 @@
+<div class="image-response">
+  <h3>✅ OCR Results</h3>
+  
+  <div class="response-content">
+    <h4>Extracted Text:</h4>
+    <div class="text-output">
+      {{ response?.data?.result?.text || 'No text detected' }}
+    </div>
+  </div>
+
+  @if (response?.data?.result?.annotations && response.data.result.annotations.length > 0) {
+    <div class="annotations-info">
+      <h4>Text Annotations ({{ response.data.result.annotations.length }}):</h4>
+      <div class="annotations-list">
+        @for (annotation of response.data.result.annotations; track $index) {
+          <div class="annotation-item">
+            <div class="annotation-header">
+              <span class="annotation-text">{{ annotation.text }}</span>
+              <span class="annotation-confidence">
+                {{ (annotation.confidence * 100).toFixed(1) }}%
+              </span>
+            </div>
+            @if (annotation.boundingBox) {
+              <div class="annotation-bounds">
+                Position: ({{ annotation.boundingBox.x }}, {{ annotation.boundingBox.y }})
+                Size: {{ annotation.boundingBox.width }}×{{ annotation.boundingBox.height }}
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (response?.data?.result?.imageInfo) {
+    <div class="image-info">
+      <h4>Image Information:</h4>
+      <div class="image-stats">
+        <div class="stat">
+          <span class="stat-label">Dimensions:</span>
+          <span class="stat-value">
+            {{ response.data.result.imageInfo.width }}×{{ response.data.result.imageInfo.height }}
+          </span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Format:</span>
+          <span class="stat-value">{{ response.data.result.imageInfo.format }}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Size:</span>
+          <span class="stat-value">{{ formatFileSize(response.data.result.imageInfo.size || 0) }}</span>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+

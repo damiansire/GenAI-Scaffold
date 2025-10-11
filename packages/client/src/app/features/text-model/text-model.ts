@@ -1,10 +1,13 @@
 import { Component, signal, inject } from '@angular/core';
-import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { ApiService, ModelInvocationResponse } from '../../core/services/api';
+import { TextModelFormComponent } from './components/text-model-form/text-model-form';
+import { TextModelResponseComponent } from './components/text-model-response/text-model-response';
+import { ModelResponseComponent } from '../../shared/components/model-response/model-response';
 
 @Component({
   selector: 'app-text-model',
-  imports: [ReactiveFormsModule],
+  imports: [TextModelFormComponent, TextModelResponseComponent, ModelResponseComponent],
   templateUrl: './text-model.html',
   styleUrl: './text-model.scss'
 })
@@ -45,17 +48,6 @@ export class TextModelComponent {
    * Handle form submission
    */
   onSubmit(): void {
-    if (this.textForm.valid) {
-      this.invokeTextModel();
-    } else {
-      this.markFormGroupTouched();
-    }
-  }
-
-  /**
-   * Invoke the text model with form data
-   */
-  private invokeTextModel(): void {
     const formValue = this.textForm.value;
     
     // Reset state
@@ -89,16 +81,6 @@ export class TextModelComponent {
   }
 
   /**
-   * Mark all form controls as touched to show validation errors
-   */
-  private markFormGroupTouched(): void {
-    Object.keys(this.textForm.controls).forEach(key => {
-      const control = this.textForm.get(key);
-      control?.markAsTouched();
-    });
-  }
-
-  /**
    * Reset the form and clear state
    */
   resetForm(): void {
@@ -111,44 +93,5 @@ export class TextModelComponent {
     });
     this.response.set(null);
     this.error.set(null);
-  }
-
-  /**
-   * Get validation error message for a form control
-   * @param controlName - Name of the form control
-   * @returns Error message or null
-   */
-  getErrorMessage(controlName: string): string | null {
-    const control = this.textForm.get(controlName);
-    
-    if (control?.errors && control.touched) {
-      if (control.errors['required']) {
-        return `${controlName} is required`;
-      }
-      if (control.errors['minlength']) {
-        return `${controlName} must be at least ${control.errors['minlength'].requiredLength} characters`;
-      }
-      if (control.errors['maxlength']) {
-        return `${controlName} must not exceed ${control.errors['maxlength'].requiredLength} characters`;
-      }
-      if (control.errors['min']) {
-        return `${controlName} must be at least ${control.errors['min'].min}`;
-      }
-      if (control.errors['max']) {
-        return `${controlName} must not exceed ${control.errors['max'].max}`;
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * Check if a form control has validation errors
-   * @param controlName - Name of the form control
-   * @returns True if control has errors and is touched
-   */
-  hasError(controlName: string): boolean {
-    const control = this.textForm.get(controlName);
-    return !!(control?.errors && control.touched);
   }
 }

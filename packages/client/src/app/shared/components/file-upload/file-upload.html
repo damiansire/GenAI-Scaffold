@@ -1,0 +1,40 @@
+<div class="file-upload-group">
+  <label for="fileInput" class="form-label">Image File *</label>
+  <div class="file-upload-area" [class.has-file]="selectedFile">
+    <input
+      #fileInput
+      type="file"
+      id="fileInput"
+      (change)="onFileSelected($event)"
+      [accept]="accept"
+      class="file-input"
+    />
+    
+    @if (!selectedFile) {
+      <div class="file-upload-placeholder">
+        <div class="upload-icon">📁</div>
+        <p>Click to select a file</p>
+        <small>Supports {{ allowedTypes.map(t => t.split('/')[1]).join(', ').toUpperCase() }} (max {{ maxSizeMB }}MB)</small>
+      </div>
+    } @else {
+      <div class="file-selected">
+        <div class="file-info">
+          <span class="file-icon">{{ getFileTypeIcon(selectedFile.type) }}</span>
+          <div class="file-details">
+            <div class="file-name">{{ selectedFile.name }}</div>
+            <div class="file-size">{{ formatFileSize(selectedFile.size) }}</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="btn-remove-file"
+          (click)="clearFile()"
+          title="Remove file"
+        >
+          ✕
+        </button>
+      </div>
+    }
+  </div>
+</div>
+

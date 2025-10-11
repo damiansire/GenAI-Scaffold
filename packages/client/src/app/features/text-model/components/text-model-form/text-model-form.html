@@ -1,0 +1,113 @@
+<section class="form-section">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="text-form">
+    <div class="form-group">
+      <label for="prompt" class="form-label">Prompt *</label>
+      <textarea
+        id="prompt"
+        formControlName="prompt"
+        class="form-control"
+        [class.error]="hasError('prompt')"
+        placeholder="Enter your prompt here..."
+        rows="4"
+      ></textarea>
+      @if (hasError('prompt')) {
+        <div class="error-message">{{ getErrorMessage('prompt') }}</div>
+      }
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="maxTokens" class="form-label">Max Tokens</label>
+        <input
+          type="number"
+          id="maxTokens"
+          formControlName="maxTokens"
+          class="form-control"
+          [class.error]="hasError('maxTokens')"
+          min="1"
+          max="1024"
+        />
+        @if (hasError('maxTokens')) {
+          <div class="error-message">{{ getErrorMessage('maxTokens') }}</div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="temperature" class="form-label">Temperature</label>
+        <input
+          type="number"
+          id="temperature"
+          formControlName="temperature"
+          class="form-control"
+          [class.error]="hasError('temperature')"
+          min="0.0"
+          max="1.0"
+          step="0.1"
+        />
+        @if (hasError('temperature')) {
+          <div class="error-message">{{ getErrorMessage('temperature') }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="topP" class="form-label">Top P</label>
+        <input
+          type="number"
+          id="topP"
+          formControlName="topP"
+          class="form-control"
+          [class.error]="hasError('topP')"
+          min="0.0"
+          max="1.0"
+          step="0.1"
+        />
+        @if (hasError('topP')) {
+          <div class="error-message">{{ getErrorMessage('topP') }}</div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="topK" class="form-label">Top K</label>
+        <input
+          type="number"
+          id="topK"
+          formControlName="topK"
+          class="form-control"
+          [class.error]="hasError('topK')"
+          min="1"
+          max="100"
+        />
+        @if (hasError('topK')) {
+          <div class="error-message">{{ getErrorMessage('topK') }}</div>
+        }
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="loading || !form.valid"
+      >
+        @if (loading) {
+          <span class="spinner"></span>
+          Processing...
+        } @else {
+          Generate Text
+        }
+      </button>
+      
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onReset()"
+        [disabled]="loading"
+      >
+        Reset
+      </button>
+    </div>
+  </form>
+</section>
+
