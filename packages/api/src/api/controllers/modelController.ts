@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ModelFactory } from '../../models/factory.js';
 import { ProcessContext, ModelMetadata } from '../../models/strategy.interface.js';
-import { ApiError } from '../../core/ApiError.js';
+import { ApiError, ApiResponse } from '../../core/ApiError.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 /**
@@ -9,16 +9,6 @@ import { asyncHandler } from '../middleware/errorHandler.js';
  */
 interface ModelInvocationRequest {
   [key: string]: any;
-}
-
-/**
- * Interface for model invocation response
- */
-interface ModelInvocationResponse {
-  success: boolean;
-  data?: any;
-  metadata?: ModelMetadata;
-  error?: string;
 }
 
 /**
@@ -115,7 +105,7 @@ export function createModelController(modelFactory: ModelFactory) {
       const processingTime = Date.now() - startTime;
 
       // Prepare response
-      const response: ModelInvocationResponse = {
+      const response: ApiResponse<any, ModelMetadata> = {
         success: true,
         data: result,
         metadata: {

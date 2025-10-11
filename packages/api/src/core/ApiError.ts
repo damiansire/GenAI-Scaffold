@@ -1,4 +1,16 @@
 /**
+ * Generic API Response structure
+ * @template T - Type of the data payload
+ * @template M - Type of the metadata (defaults to Record<string, any>)
+ */
+export interface ApiResponse<T = any, M = Record<string, any>> {
+  success: boolean;
+  data?: T;
+  metadata?: M;
+  error?: string;
+}
+
+/**
  * Custom API Error class for handling application-specific errors
  * Extends the native Error class with additional properties for HTTP responses
  */
