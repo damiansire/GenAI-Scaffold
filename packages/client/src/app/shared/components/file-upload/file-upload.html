@@ -14,15 +14,15 @@
       <div class="file-upload-placeholder">
         <div class="upload-icon">📁</div>
         <p>Click to select a file</p>
-        <small>Supports {{ getAllowedTypesString() }} (max {{ maxSizeMB() }}MB)</small>
+        <small>Supports {{ allowedTypesString() }} (max {{ maxSizeMB() }}MB)</small>
       </div>
     } @else {
       <div class="file-selected">
         <div class="file-info">
-          <span class="file-icon">{{ getFileTypeIcon(selectedFile()!.type) }}</span>
+          <span class="file-icon">{{ fileTypeIcon() }}</span>
           <div class="file-details">
             <div class="file-name">{{ selectedFile()!.name }}</div>
-            <div class="file-size">{{ formatFileSize(selectedFile()!.size) }}</div>
+            <div class="file-size">{{ fileSize() }}</div>
           </div>
         </div>
         <button

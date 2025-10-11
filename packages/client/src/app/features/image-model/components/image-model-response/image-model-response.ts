@@ -1,4 +1,4 @@
-import { Component, input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy, computed } from '@angular/core';
 import { ModelInvocationResponse } from '../../../../core/services/api';
 
 @Component({
@@ -11,7 +11,9 @@ import { ModelInvocationResponse } from '../../../../core/services/api';
 export class ImageModelResponseComponent {
   response = input<ModelInvocationResponse | null>(null);
 
-  formatFileSize(bytes: number): string {
+  // Computed signal for image size
+  imageSize = computed(() => {
+    const bytes = this.response()?.data?.result?.imageInfo?.size || 0;
     if (bytes === 0) return '0 Bytes';
     
     const k = 1024;
@@ -19,6 +21,6 @@ export class ImageModelResponseComponent {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
+  });
 }
 

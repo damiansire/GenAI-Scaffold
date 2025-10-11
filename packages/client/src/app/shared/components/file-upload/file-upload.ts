@@ -1,4 +1,4 @@
-import { Component, input, output, viewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, viewChild, ElementRef, ChangeDetectionStrategy, computed } from '@angular/core';
 
 @Component({
   selector: 'app-file-upload',
@@ -18,6 +18,37 @@ export class FileUploadComponent {
   error = output<string>();
   
   fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+
+  // Computed signals
+  fileSize = computed(() => {
+    const file = this.selectedFile();
+    if (!file) return '0 Bytes';
+    
+    const bytes = file.size;
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  });
+
+  fileTypeIcon = computed(() => {
+    const file = this.selectedFile();
+    if (!file) return '📄';
+    
+    if (file.type.startsWith('image/')) {
+      return '🖼️';
+    }
+    return '📄';
+  });
+
+  allowedTypesString = computed(() => {
+    return this.allowedTypes()
+      .map(type => type.split('/')[1])
+      .join(', ')
+      .toUpperCase();
+  });
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -49,30 +80,6 @@ export class FileUploadComponent {
       inputEl.nativeElement.value = '';
     }
     this.fileCleared.emit();
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
-  getFileTypeIcon(mimeType: string): string {
-    if (mimeType.startsWith('image/')) {
-      return '🖼️';
-    }
-    return '📄';
-  }
-
-  getAllowedTypesString(): string {
-    return this.allowedTypes()
-      .map(type => type.split('/')[1])
-      .join(', ')
-      .toUpperCase();
   }
 }
 
