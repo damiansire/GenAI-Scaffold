@@ -241,6 +241,10 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
       throw new Error('Simulated API error: Image processing failed');
     }
 
+    if (!selectedScenario) {
+      throw new Error('No scenario selected');
+    }
+
     return selectedScenario;
   }
 
@@ -279,7 +283,7 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
         imageInfo: {
           width: 800,
           height: 600,
-          format: mimeType.split('/')[1].toUpperCase(),
+          format: (mimeType.split('/')[1] || 'UNKNOWN').toUpperCase(),
           size: 1024000
         },
         processingTime: 2500
@@ -317,7 +321,7 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
         imageInfo: {
           width: 600,
           height: 400,
-          format: mimeType.split('/')[1].toUpperCase(),
+          format: (mimeType.split('/')[1] || 'UNKNOWN').toUpperCase(),
           size: 512000
         },
         processingTime: 2800
@@ -361,7 +365,7 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
         imageInfo: {
           width: 400,
           height: 300,
-          format: mimeType.split('/')[1].toUpperCase(),
+          format: (mimeType.split('/')[1] || 'UNKNOWN').toUpperCase(),
           size: 256000
         },
         processingTime: 3200
@@ -391,7 +395,7 @@ export class ModelStrategy implements IModelStrategy<GoogleVisionOCRInput, Model
         imageInfo: {
           width: 500,
           height: 200,
-          format: mimeType.split('/')[1].toUpperCase(),
+          format: (mimeType.split('/')[1] || 'UNKNOWN').toUpperCase(),
           size: 128000
         },
         processingTime: 2400

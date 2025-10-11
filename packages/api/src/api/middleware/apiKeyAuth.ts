@@ -96,6 +96,10 @@ function getValidApiKeys(): Array<{ id: string; key: string; permissions: string
 
     // Parse key and permissions (format: "key:permission1,permission2")
     const [key, permissionsStr] = keyValue.split(':');
+    
+    // Skip if key is undefined
+    if (!key) continue;
+    
     const permissions = permissionsStr ? permissionsStr.split(',').map(p => p.trim()) : ['read'];
     
     validKeys.push({

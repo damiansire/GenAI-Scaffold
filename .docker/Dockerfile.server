@@ -1,4 +1,31 @@
 # Optimized Dockerfile for Node.js Backend Server
+FROM node:20-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Copy root package files for workspace
+COPY package*.json ./
+
+# Copy workspace package files
+COPY packages/api/package*.json ./packages/api/
+COPY packages/api/tsconfig.json ./packages/api/
+COPY packages/api/tsconfig.prod.json ./packages/api/
+
+# Install all dependencies (including devDependencies for build)
+RUN npm ci --workspace=api --include-workspace-root && \
+    npm cache clean --force
+
+# Copy source code
+COPY packages/api/src ./packages/api/src
+
+# Build TypeScript using production config
+RUN npm run build:prod --workspace=api
+
+# Remove devDependencies for production
+RUN npm prune --production --workspace=api
+
+# Production stage
 FROM node:20-alpine
 
 # Set working directory
@@ -8,18 +35,11 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S -D -H -u 1001 -h /app -s /sbin/nologin -G nodejs -g nodejs nodejs
 
-# Copy package files first for better layer caching
-COPY packages/api/package*.json ./
+# Copy only production node_modules from builder (hoisted at root level)
+COPY --from=builder /app/node_modules ./node_modules
 
-# Install production dependencies only
-RUN npm ci --only=production --silent && \
-    npm cache clean --force
-
-# Copy compiled source code
-COPY packages/api/dist ./dist
-
-# Copy any additional files needed for runtime
-COPY packages/api/.env* ./
+# Copy compiled source code from builder
+COPY --from=builder /app/packages/api/dist ./dist
 
 # Create necessary directories and set permissions
 RUN mkdir -p /app/logs && \

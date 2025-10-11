@@ -35,14 +35,10 @@ export function errorHandler(
         statusCode: err.statusCode,
         timestamp: err.timestamp,
         path: req.path,
-        method: req.method
+        method: req.method,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
       }
     };
-
-    // Add stack trace in development mode
-    if (process.env.NODE_ENV === 'development') {
-      errorResponse.error.stack = err.stack;
-    }
 
     res.status(err.statusCode).json(errorResponse);
     return;
@@ -105,19 +101,15 @@ export function errorHandler(
     error: {
       name: 'InternalServerError',
       message: isDevelopment ? err.message : 'Internal Server Error',
-      statusCode: 500,
-      timestamp: new Date().toISOString(),
-      path: req.path,
-      method: req.method
-    }
-  };
-
-  // Add stack trace in development mode
-  if (isDevelopment) {
-    errorResponse.error.stack = err.stack;
+    statusCode: 500,
+    timestamp: new Date().toISOString(),
+    path: req.path,
+    method: req.method,
+    ...(isDevelopment && { stack: err.stack })
   }
+};
 
-  res.status(500).json(errorResponse);
+res.status(500).json(errorResponse);
 }
 
 /**

@@ -5,20 +5,21 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files for dependency installation
-COPY packages/client/package*.json ./
+# Copy root package files for workspace support
+COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production --silent
+# Copy client package files for dependency installation
+COPY packages/client/package*.json ./packages/client/
+
+# Install dependencies (including devDependencies needed for build)
+RUN npm ci --workspace=client --include-workspace-root && \
+    npm cache clean --force
 
 # Copy source code
-COPY packages/client/ ./
-
-# Copy environment file (if exists)
-COPY packages/client/src/environments/environment.prod.ts packages/client/src/environments/environment.ts 2>/dev/null || true
+COPY packages/client/ ./packages/client/
 
 # Build the Angular application
-RUN npm run build --configuration=production
+RUN npm run build:prod --workspace=client
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine
@@ -26,22 +27,18 @@ FROM nginx:alpine
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist/client /usr/share/nginx/html
+# Copy built application from builder stage (Angular outputs to packages/client/dist/client/browser)
+COPY --from=builder /app/packages/client/dist/client/browser /usr/share/nginx/html
 
 # Copy custom Nginx configuration for SPA
 COPY .docker/nginx.conf /etc/nginx/nginx.conf
 
-# Create a non-root user for security
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx && \
-    chown -R nginx:nginx /usr/share/nginx/html && \
+# Nginx alpine image already has nginx user, just set proper permissions
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-# Switch to non-root user
-USER nginx
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    chmod -R 755 /usr/share/nginx/html
 
 # Expose port 80
 EXPOSE 80

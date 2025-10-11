@@ -223,6 +223,10 @@ export class ModelStrategy implements IModelStrategy<GoogleTextBisonInput, Model
       throw new Error('Simulated API error: Rate limit exceeded');
     }
 
+    if (!selectedScenario) {
+      throw new Error('No scenario selected');
+    }
+
     return selectedScenario;
   }
 

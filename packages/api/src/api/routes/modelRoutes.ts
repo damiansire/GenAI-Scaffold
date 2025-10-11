@@ -164,7 +164,8 @@ export function createModelRoutes(modelFactory: ModelFactory, schemaRegistry: Sc
     apiKeyAuth,
     (req, res, next) => {
       // Apply dynamic multer middleware based on model requirements
-      const multerMiddleware = createDynamicMulterMiddleware(req.params.modelId);
+      const modelId = req.params.modelId || '';
+      const multerMiddleware = createDynamicMulterMiddleware(modelId);
       multerMiddleware(req, res, next);
     },
     dynamicValidation,
