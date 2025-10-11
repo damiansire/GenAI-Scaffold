@@ -7,18 +7,18 @@
   <div class="content">
     <app-text-model-form
       [form]="textForm"
-      [loading]="loading()"
+      [loading]="textModelResource.isLoading()"
       (submitForm)="onSubmit()"
       (resetForm)="resetForm()"
     />
 
     <app-model-response
-      [loading]="loading()"
-      [error]="error()"
-      [response]="response()"
+      [loading]="textModelResource.isLoading()"
+      [error]="textModelResource.error()?.message || null"
+      [response]="textModelResource.value() ?? null"
       loadingMessage="Generating text response..."
     >
-      <app-text-model-response [response]="response()" />
+      <app-text-model-response [response]="textModelResource.value() ?? null" />
     </app-model-response>
   </div>
 </div>

@@ -15,7 +15,7 @@
 
       <app-image-model-form
         [form]="imageForm"
-        [loading]="loading()"
+        [loading]="imageModelResource.isLoading()"
         [hasFile]="!!selectedFile()"
         (submitForm)="onSubmit()"
         (resetForm)="resetForm()"
@@ -23,12 +23,12 @@
     </section>
 
     <app-model-response
-      [loading]="loading()"
-      [error]="error()"
-      [response]="response()"
+      [loading]="imageModelResource.isLoading()"
+      [error]="fileError() || imageModelResource.error()?.message || null"
+      [response]="imageModelResource.value() ?? null"
       loadingMessage="Processing image and extracting text..."
     >
-      <app-image-model-response [response]="response()" />
+      <app-image-model-response [response]="imageModelResource.value() ?? null" />
     </app-model-response>
   </div>
 </div>

@@ -1,6 +1,8 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { ApiService, ModelInvocationResponse } from '../../core/services/api';
+import { httpResource } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { ModelInvocationResponse } from '../../core/services/api';
 import { TextModelFormComponent } from './components/text-model-form/text-model-form';
 import { TextModelResponseComponent } from './components/text-model-response/text-model-response';
 import { ModelResponseComponent } from '../../shared/components/model-response/model-response';
@@ -13,12 +15,36 @@ import { ModelResponseComponent } from '../../shared/components/model-response/m
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TextModelComponent {
-  private readonly apiService = inject(ApiService);
+  private readonly baseUrl = environment.apiUrl || 'http://localhost:3000/api';
+  private readonly apiKey = environment.apiKey || '';
 
-  // Signals for state management
-  loading = signal(false);
-  response = signal<ModelInvocationResponse | null>(null);
-  error = signal<string | null>(null);
+  // Request signal to trigger API calls
+  requestParams = signal<{
+    prompt: string;
+    maxTokens: number;
+    temperature: number;
+    topP: number;
+    topK: number;
+  } | undefined>(undefined);
+
+  // HttpResource for reactive HTTP calls
+  textModelResource = httpResource<ModelInvocationResponse>(() => {
+    const params = this.requestParams();
+    if (!params) {
+      return { url: '' }; // Empty request when no params
+    }
+    
+    console.log('Text model request:', params);
+    return {
+      url: `${this.baseUrl}/models/google-text-bison/invoke`,
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': this.apiKey
+      }
+    };
+  });
 
   // Reactive form
   textForm = new FormGroup({
@@ -51,34 +77,14 @@ export class TextModelComponent {
   onSubmit(): void {
     const formValue = this.textForm.value;
     
-    // Reset state
-    this.loading.set(true);
-    this.response.set(null);
-    this.error.set(null);
-
-    // Prepare payload
-    const payload = {
-      prompt: formValue.prompt,
-      maxTokens: formValue.maxTokens,
-      temperature: formValue.temperature,
-      topP: formValue.topP,
-      topK: formValue.topK
-    };
-
-    // Call API service
-    this.apiService.invokeModel('google-text-bison', payload)
-      .subscribe({
-        next: (response) => {
-          this.loading.set(false);
-          this.response.set(response);
-          console.log('Text model response:', response);
-        },
-        error: (error) => {
-          this.loading.set(false);
-          this.error.set(error.message || 'An error occurred while processing the request');
-          console.error('Text model error:', error);
-        }
-      });
+    // Update request params to trigger resource loading
+    this.requestParams.set({
+      prompt: formValue.prompt!,
+      maxTokens: formValue.maxTokens!,
+      temperature: formValue.temperature!,
+      topP: formValue.topP!,
+      topK: formValue.topK!
+    });
   }
 
   /**
@@ -92,7 +98,6 @@ export class TextModelComponent {
       topP: 0.9,
       topK: 40
     });
-    this.response.set(null);
-    this.error.set(null);
+    this.requestParams.set(undefined);
   }
 }

@@ -1,6 +1,8 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { ApiService, ModelInvocationResponse } from '../../core/services/api';
+import { httpResource } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { ModelInvocationResponse } from '../../core/services/api';
 import { FileUploadComponent } from '../../shared/components/file-upload/file-upload';
 import { ImageModelFormComponent } from './components/image-model-form/image-model-form';
 import { ImageModelResponseComponent } from './components/image-model-response/image-model-response';
@@ -14,13 +16,54 @@ import { ModelResponseComponent } from '../../shared/components/model-response/m
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ImageModelComponent {
-  private readonly apiService = inject(ApiService);
+  private readonly baseUrl = environment.apiUrl || 'http://localhost:3000/api';
+  private readonly apiKey = environment.apiKey || '';
 
   // Signals for state management
-  loading = signal(false);
-  response = signal<ModelInvocationResponse | null>(null);
-  error = signal<string | null>(null);
   selectedFile = signal<File | null>(null);
+  fileError = signal<string | null>(null);
+
+  // Request signal to trigger API calls
+  requestParams = signal<{
+    file: File;
+    params: {
+      language: string;
+      maxResults: number;
+      confidenceThreshold: number;
+      includeBoundingBoxes: boolean;
+      outputFormat: string;
+    };
+  } | undefined>(undefined);
+
+  // HttpResource for reactive HTTP calls with FormData
+  imageModelResource = httpResource<ModelInvocationResponse>(() => {
+    const params = this.requestParams();
+    if (!params) {
+      return { url: '' }; // Empty request when no params
+    }
+    
+    console.log('Image model request:', {
+      fileName: params.file.name,
+      params: params.params
+    });
+
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('imageFile', params.file);
+    Object.entries(params.params).forEach(([key, value]) => {
+      formData.append(key, String(value));
+    });
+    
+    return {
+      url: `${this.baseUrl}/models/google-vision-ocr/invoke`,
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-API-Key': this.apiKey
+        // Don't set Content-Type for FormData - browser sets it with boundary
+      }
+    };
+  });
 
   // Reactive form
   imageForm = new FormGroup({
@@ -47,7 +90,7 @@ export class ImageModelComponent {
    */
   onFileSelected(file: File): void {
     this.selectedFile.set(file);
-    this.error.set(null);
+    this.fileError.set(null);
     
     console.log('File selected:', {
       name: file.name,
@@ -61,14 +104,14 @@ export class ImageModelComponent {
    */
   onFileCleared(): void {
     this.selectedFile.set(null);
-    this.error.set(null);
+    this.fileError.set(null);
   }
 
   /**
    * Handle file upload error
    */
   onFileError(errorMessage: string): void {
-    this.error.set(errorMessage);
+    this.fileError.set(errorMessage);
   }
 
   /**
@@ -79,45 +122,21 @@ export class ImageModelComponent {
     const file = this.selectedFile();
     
     if (!file) {
-      this.error.set('No file selected');
+      this.fileError.set('No file selected');
       return;
     }
 
-    // Reset state
-    this.loading.set(true);
-    this.response.set(null);
-    this.error.set(null);
-
-    // Prepare payload (text fields only)
-    const payload = {
-      language: formValue.language,
-      maxResults: formValue.maxResults,
-      confidenceThreshold: formValue.confidenceThreshold,
-      includeBoundingBoxes: formValue.includeBoundingBoxes,
-      outputFormat: formValue.outputFormat
-    };
-
-    console.log('Invoking image model with:', {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      payload
+    // Update request params to trigger resource loading
+    this.requestParams.set({
+      file,
+      params: {
+        language: formValue.language!,
+        maxResults: formValue.maxResults!,
+        confidenceThreshold: formValue.confidenceThreshold!,
+        includeBoundingBoxes: formValue.includeBoundingBoxes!,
+        outputFormat: formValue.outputFormat!
+      }
     });
-
-    // Call API service with file upload
-    this.apiService.invokeModelWithFile('google-vision-ocr', payload, file, 'imageFile')
-      .subscribe({
-        next: (response) => {
-          this.loading.set(false);
-          this.response.set(response);
-          console.log('Image model response:', response);
-        },
-        error: (error) => {
-          this.loading.set(false);
-          this.error.set(error.message || 'An error occurred while processing the image');
-          console.error('Image model error:', error);
-        }
-      });
   }
 
   /**
@@ -132,7 +151,7 @@ export class ImageModelComponent {
       outputFormat: 'structured'
     });
     this.selectedFile.set(null);
-    this.response.set(null);
-    this.error.set(null);
+    this.fileError.set(null);
+    this.requestParams.set(undefined);
   }
 }
