@@ -38,7 +38,7 @@ export class ImageGenerationComponent {
   imageGenResource = httpResource<ModelInvocationResponse>(() => {
     const params = this.requestParams();
     if (!params) {
-      return { url: '' };
+      return undefined; // No request when no params
     }
     
     console.log('Gemini Image Generation request:', params);

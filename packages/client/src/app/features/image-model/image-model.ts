@@ -39,7 +39,7 @@ export class ImageModelComponent {
   imageModelResource = httpResource<ModelInvocationResponse>(() => {
     const params = this.requestParams();
     if (!params) {
-      return { url: '' }; // Empty request when no params
+      return undefined; // No request when no params
     }
     
     console.log('Image model request:', {
