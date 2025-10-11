@@ -578,6 +578,169 @@ df -h
 free -h
 ```
 
+## 🐛 Solución de Problemas de Docker
+
+### Problema: `npm ci` falla con "exit code: 1"
+
+**Síntoma:**
+
+```bash
+ERROR: process "/bin/sh -c npm ci --only=production" did not complete successfully: exit code: 1
+```
+
+**Causa:** El proyecto usa npm workspaces (monorepo), pero los Dockerfiles intentaban instalar dependencias como si cada paquete fuera independiente.
+
+**Solución:** Los Dockerfiles ya están actualizados con soporte para workspaces:
+
+```dockerfile
+# Dockerfile.server - CORRECTO
+WORKDIR /app
+
+# Copiar archivos de workspace root
+COPY package*.json ./
+
+# Copiar archivos del paquete API
+COPY packages/api/package*.json ./packages/api/
+COPY packages/api/tsconfig.json ./packages/api/
+
+# Instalar con workspace
+RUN npm ci --workspace=api --include-workspace-root && \
+    npm cache clean --force
+```
+
+### Problema: Errores de compilación TypeScript en Docker
+
+**Síntoma:**
+
+```bash
+error TS6133: 'parameter' is declared but its value is never read.
+error TS2322: Type 'undefined' is not assignable to type 'string'.
+```
+
+**Causa:** El `tsconfig.json` tiene configuraciones muy estrictas que causan errores en producción.
+
+**Solución:** Se creó `tsconfig.prod.json` con configuraciones menos estrictas:
+
+```json
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "exactOptionalPropertyTypes": false
+  }
+}
+```
+
+Y se actualizó `package.json`:
+
+```json
+{
+  "scripts": {
+    "build": "tsc",
+    "build:prod": "tsc -p tsconfig.prod.json"
+  }
+}
+```
+
+### Problema: Nginx container reinicia constantemente
+
+**Síntoma:**
+
+```bash
+nginx: [emerg] "server" directive is not allowed here in /etc/nginx/nginx.conf:1
+```
+
+**Causa:** El archivo `nginx.conf` solo contenía el bloque `server` sin la estructura completa requerida.
+
+**Solución:** Se agregó la estructura completa con bloques `events` y `http`:
+
+```nginx
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # ... configuración gzip ...
+
+    server {
+        listen 80;
+        server_name localhost;
+        # ... resto de configuración ...
+    }
+}
+```
+
+### Problema: Error al copiar node_modules en producción
+
+**Síntoma:**
+
+```bash
+ERROR: failed to calculate checksum: "/app/packages/api/node_modules": not found
+```
+
+**Causa:** En workspaces, las dependencias están hoisted al directorio root, no en cada paquete.
+
+**Solución:** Copiar solo desde el root:
+
+```dockerfile
+# Incorrecto
+COPY --from=builder /app/packages/api/node_modules ./node_modules
+
+# Correcto
+COPY --from=builder /app/node_modules ./node_modules
+```
+
+### Comandos básicos de Docker
+
+```bash
+# Construir todas las imágenes
+docker compose build
+
+# Construir solo un servicio
+docker compose build api
+docker compose build client
+
+# Iniciar servicios en modo detached
+docker compose up -d
+
+# Ver logs en tiempo real
+docker compose logs -f
+
+# Ver estado de contenedores
+docker compose ps
+
+# Detener y eliminar contenedores
+docker compose down
+
+# Detener, eliminar y limpiar volúmenes
+docker compose down -v
+
+# Reconstruir forzando sin caché
+docker compose build --no-cache
+
+# Ver logs de un servicio específico
+docker compose logs -f api
+docker compose logs -f client
+
+# Entrar a un contenedor en ejecución
+docker compose exec api sh
+docker compose exec client sh
+
+# Verificar health checks
+curl http://localhost:3000/health
+curl http://localhost:8080/health
+```
+
 ---
 
 ¿Necesitas ayuda con algún aspecto específico del despliegue? Revisa la documentación o crea un issue en el repositorio.

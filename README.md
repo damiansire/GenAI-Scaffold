@@ -127,15 +127,30 @@ npm run dev
 #### Option 2: Docker Mode (Recommended for production/testing)
 
 ```bash
-# Start Docker Desktop first
+# Start Docker Desktop first (macOS)
 open -a Docker
 
 # Build and run with Docker
-docker-compose up --build
+docker compose up --build -d
+
+# Check service status
+docker compose ps
+
+# View logs
+docker compose logs -f
 ```
 
 - **Angular frontend**: http://localhost:8080
 - **Node.js backend**: http://localhost:3000
+
+**Health Checks:**
+
+```bash
+curl http://localhost:3000/health  # API
+curl http://localhost:8080/health  # Frontend
+```
+
+> **Troubleshooting Docker:** If you encounter build errors, check the [Deployment Guide troubleshooting section](docs/DEPLOYMENT.md#-solución-de-problemas-de-docker)
 
 ---
 
@@ -261,7 +276,9 @@ Comprehensive documentation is available in the `docs/` directory:
 The project is fully containerized and ready for production deployment.
 
 - **Multi-stage Builds**: Each Dockerfile separates build and runtime environments for smaller, secure images.
+- **Workspace Support**: Dockerfiles are configured for npm workspaces (monorepo architecture)
 - **Nginx for Frontend**: The built Angular app is served via an optimized Nginx container for SPA delivery.
+- **Health Checks**: Both services include health check endpoints for monitoring
 - **Single Command Orchestration**: The `docker-compose.yml` file spins up the full production stack easily.
 
 To build and run production containers:
@@ -270,9 +287,47 @@ To build and run production containers:
 # Start Docker Desktop first (macOS)
 open -a Docker
 
-# Build and run
-docker-compose up --build
+# Build and run all services
+docker compose build
+docker compose up -d
+
+# Check status (both services should be healthy)
+docker compose ps
+
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
 ```
+
+**Useful Commands:**
+
+```bash
+# Rebuild without cache
+docker compose build --no-cache
+
+# Build specific service
+docker compose build api
+docker compose build client
+
+# View service logs
+docker compose logs -f api
+docker compose logs -f client
+
+# Execute commands in running container
+docker compose exec api sh
+docker compose exec client sh
+```
+
+**Architecture Notes:**
+
+- The API service uses a multi-stage build with TypeScript compilation
+- Dependencies are installed using `npm ci --workspace` for monorepo support
+- Production TypeScript configuration relaxes strictness for deployment
+- Nginx serves the Angular app with SPA routing support and compression
+
+For detailed deployment instructions and troubleshooting, see the **[Deployment Guide](docs/DEPLOYMENT.md)**
 
 ---
 
