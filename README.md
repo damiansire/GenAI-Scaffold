@@ -1,7 +1,3 @@
-⚠️ (WORK IN PROGRESS) Not for production use.
-
-🚧 (DRAFT) This repository is currently under construction.
-
 > **📌 Important:** Before using this repository, please read the [DISCLAIMER.md](docs/DISCLAIMER.md) about how to properly use this as a reference.
 
 # 🚀 Full-Stack Multimodal AI Application: A Production Blueprint
