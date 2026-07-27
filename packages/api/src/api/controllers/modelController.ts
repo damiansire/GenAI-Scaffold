@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { performance } from 'node:perf_hooks';
-import { randomBytes } from 'node:crypto';
 import { ModelFactory } from '../../infrastructure/ai/factory.js';
 import { ProcessContext, ModelMetadata } from '../../domain/ai/strategy.interface.js';
 import { ApiResponse } from '../../core/types.js';
@@ -220,8 +219,21 @@ export function createStreamController(modelFactory: ModelFactory) {
 
       const result = await invokeModelUseCase.execute(dto);
 
-      // Simulate chunking the response text using a native stream implementation
-      const textToStream = result.text || JSON.stringify(result);
+      // Every plugin returns the ModelOutput envelope `{ result, metadata }`, so
+      // the text lives at `result.result.text`. Reading `result.text` yielded
+      // undefined and the old fallback streamed the whole JSON envelope as if it
+      // were the model's answer. No silent fallback now: if the plugin produced
+      // no text that is an error frame, not a payload the user has to decode.
+      const textToStream = result?.result?.text;
+      if (typeof textToStream !== 'string') {
+        logger.error(`Stream Controller: model '${modelId}' returned no text to stream`, {
+          modelId,
+        });
+        res.write(`event: error\n`);
+        res.write(`data: ${JSON.stringify({ message: 'Model returned no streamable text.' })}\n\n`);
+        res.end();
+        return;
+      }
       let i = 0;
       let firstTokenSent = false;
       let isDisconnected = false;
@@ -274,16 +286,13 @@ export function createStreamController(modelFactory: ModelFactory) {
             return;
           }
 
-          // Sanitización estricta de nuevas líneas (Defensa contra CVE-2026-33128 SSE Injection)
-          const sanitizedChunk = chunk.replace(/\n/g, '\\n');
-
           // Contract (P2): emit `{ text }` — the shared shape both clients parse.
-          res.write(`data: ${JSON.stringify({ text: sanitizedChunk })}\n\n`);
-
-          // Padding (Relleno Estocástico): inject random crypto noise to destroy token length predictability
-          const noiseLength = Math.floor(Math.random() * 64) + 16;
-          const noise = randomBytes(noiseLength).toString('hex');
-          res.write(`: ${noise}\n\n`);
+          // `JSON.stringify` IS the SSE-injection defense: inside a JSON string
+          // literal a newline is escaped to the two characters `\` + `n`, so a
+          // chunk can never emit the blank line that terminates an SSE record.
+          // Escaping the chunk beforehand double-escaped it and the client
+          // rendered a literal «\n» instead of a line break.
+          res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
 
           i += chunkSize;
 
