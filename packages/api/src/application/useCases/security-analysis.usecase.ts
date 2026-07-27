@@ -48,6 +48,22 @@ export interface SecurityAnalysisReport {
   mitigations: string[];
 }
 
+// ─── Scan limits ──────────────────────────────────────────────────────────────
+
+/**
+ * Longest prefix of a single log line that is matched against the pattern
+ * library.
+ *
+ * Explicit limit, not a magic number: these patterns run on the event loop, and
+ * with unbounded nested wildcards a single ~500 KB line without newlines pushed
+ * the regex engine into catastrophic backtracking, so one authenticated request
+ * froze the whole gateway for tens of seconds. Two defenses, both needed: every
+ * pattern below uses BOUNDED, non-nested wildcards, and each line is scanned
+ * only up to this length. Real syslog/CEF entries are far shorter; anything
+ * longer is a payload, not a log line.
+ */
+export const MAX_SCANNED_LINE_CHARS = 2000;
+
 // ─── Pattern Library ──────────────────────────────────────────────────────────
 
 const THREAT_PATTERNS: Array<{
@@ -61,7 +77,7 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Brute Force',
     technique: 'T1110',
-    pattern: /Failed password for .+ from .+:\d+ ssh2/gi,
+    pattern: /Failed password for [^\n]{1,120} from [^\n]{1,120}:\d+ ssh2/gi,
     severity: 'HIGH',
     weight: 15,
     recommendation: 'Enable fail2ban, enforce MFA, and review SSH access policies.',
@@ -69,7 +85,7 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Credential Stuffing',
     technique: 'T1110.004',
-    pattern: /authentication failure.*user=\S+/gi,
+    pattern: /authentication failure[^\n]{0,120}user=\S+/gi,
     severity: 'HIGH',
     weight: 12,
     recommendation: 'Implement rate limiting on authentication endpoints and enable adaptive MFA.',
@@ -95,7 +111,8 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Port Scanning',
     technique: 'T1046',
-    pattern: /nmap|masscan|port.*scan|SYN.*flood|connect.*refused.*\d{2,}/gi,
+    pattern:
+      /nmap|masscan|port[^\n]{0,20}scan|SYN[^\n]{0,20}flood|connect[^\n]{0,40}refused[^\n]{0,40}\d{2,}/gi,
     severity: 'MEDIUM',
     weight: 10,
     recommendation: 'Block the source IP via firewall, review network segmentation.',
@@ -103,7 +120,7 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Privilege Escalation',
     technique: 'T1548',
-    pattern: /sudo.*authentication failure|su.*FAILED|pkexec.*error/gi,
+    pattern: /sudo[^\n]{0,80}authentication failure|su[^\n]{0,80}FAILED|pkexec[^\n]{0,80}error/gi,
     severity: 'HIGH',
     weight: 20,
     recommendation: 'Audit sudoers file, enforce principle of least privilege.',
@@ -111,7 +128,8 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Data Exfiltration',
     technique: 'T1041',
-    pattern: /bytes_sent=(\d{7,})|POST.*\d{6,}.*bytes|transfer.*\d{6,}/gi,
+    pattern:
+      /bytes_sent=(\d{7,})|POST[^\n]{0,120}\d{6,}[^\n]{0,120}bytes|transfer[^\n]{0,120}\d{6,}/gi,
     severity: 'CRITICAL',
     weight: 30,
     recommendation: 'Block outbound traffic to destination IP, initiate DLP investigation.',
@@ -119,7 +137,7 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Lateral Movement',
     technique: 'T1021',
-    pattern: /RDP.*login|smb.*connection|wmi.*remote|psexec/gi,
+    pattern: /RDP[^\n]{0,40}login|smb[^\n]{0,40}connection|wmi[^\n]{0,40}remote|psexec/gi,
     severity: 'HIGH',
     weight: 22,
     recommendation: 'Isolate affected hosts, review east-west firewall rules.',
@@ -127,7 +145,8 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'C2 Beacon',
     technique: 'T1071',
-    pattern: /DNS.*TXT.*query|periodic.*external|beacon.*interval/gi,
+    pattern:
+      /DNS[^\n]{0,40}TXT[^\n]{0,40}query|periodic[^\n]{0,40}external|beacon[^\n]{0,40}interval/gi,
     severity: 'CRITICAL',
     weight: 28,
     recommendation: 'Block DNS-over-HTTPS to unknown resolvers, deploy network EDR.',
@@ -135,7 +154,7 @@ const THREAT_PATTERNS: Array<{
   {
     category: 'Directory Traversal',
     technique: 'T1083',
-    pattern: /\.\.\/|\.\.\\|%2e%2e%2f|path.*traversal/gi,
+    pattern: /\.\.\/|\.\.\\|%2e%2e%2f|path[^\n]{0,40}traversal/gi,
     severity: 'HIGH',
     weight: 16,
     recommendation: 'Validate all file path inputs server-side, restrict web root permissions.',
@@ -173,7 +192,10 @@ export class SecurityAnalysisUseCase extends UseCase<string, SecurityAnalysisRep
   protected async executeImpl(logs: string): Promise<SecurityAnalysisReport> {
     const start = performance.now();
     const traceId = getContext()?.traceId;
-    const logLines = logs.split('\n').filter((l) => l.trim().length > 0);
+    const logLines = logs
+      .split('\n')
+      .filter((l) => l.trim().length > 0)
+      .map((l) => (l.length > MAX_SCANNED_LINE_CHARS ? l.slice(0, MAX_SCANNED_LINE_CHARS) : l));
 
     logger.info('[SecurityAnalysis] Analyzing logs', { lines: logLines.length, traceId });
 
