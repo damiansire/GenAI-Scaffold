@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { API_CONFIG } from '../tokens/api-config';
 import { ModelInvocationResponse } from '../types/api.types';
+import { GatewayHttpService } from './gateway-http.service';
 import {
   createSmoothMessage,
   type SmoothMessageController,
@@ -44,7 +44,7 @@ export interface StreamState {
  */
 @Injectable({ providedIn: 'root' })
 export class AiStreamService {
-  private readonly apiConfig = inject(API_CONFIG);
+  private readonly gateway = inject(GatewayHttpService);
 
   /** AbortController for the current stream — allows re-entrant cancellation. */
   private currentController: AbortController | null = null;
@@ -124,20 +124,10 @@ export class AiStreamService {
 
     try {
       // Streaming bypasses HttpClient (needs the low-level fetch reader), so the
-      // X-API-Key interceptor does NOT run here — add the header manually so the
-      // fail-closed gateway does not 401 the stream.
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-      };
-      if (this.apiConfig.apiKey) {
-        headers['X-API-Key'] = this.apiConfig.apiKey;
-      }
-
-      const response = await fetch(`${this.apiConfig.baseUrl}/models/${modelId}/stream`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
+      // X-API-Key interceptor does NOT run here. GatewayHttpService is the one
+      // place that attaches the key for the fetch path.
+      const response = await this.gateway.postJson(`/models/${modelId}/stream`, payload, {
+        headers: { Accept: 'text/event-stream' },
         signal: abortSignal,
       });
 

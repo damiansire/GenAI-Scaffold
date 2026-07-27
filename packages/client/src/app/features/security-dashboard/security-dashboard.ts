@@ -11,7 +11,7 @@
  */
 import { Component, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { API_CONFIG } from '../../core/tokens/api-config';
+import { GatewayHttpService } from '../../core/services/gateway-http.service';
 import type { SecurityAnalysisReport, ThreatSeverity } from './security.types';
 
 const SAMPLE_LOGS = `Failed password for invalid user admin from 192.168.1.45 port 43210 ssh2
@@ -33,7 +33,7 @@ bytes_sent=15728640 dst_ip=203.0.113.5 dst_port=4444
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SecurityDashboard {
-  private readonly apiConfig = inject(API_CONFIG);
+  private readonly gateway = inject(GatewayHttpService);
 
   // ─── Form state ──────────────────────────────────────────────────────────
   logs = signal('');
@@ -88,10 +88,8 @@ export class SecurityDashboard {
     this.analysisError.set(null);
 
     try {
-      const res = await fetch(`${this.apiConfig.baseUrl}/domain/security/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logs: this.logs() }),
+      const res = await this.gateway.postJson('/domain/security/analyze', {
+        logs: this.logs(),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { API_CONFIG } from '../tokens/api-config';
+import { GatewayHttpService } from './gateway-http.service';
 
 export interface ContextCacheResult {
   cacheId: string;
@@ -37,7 +37,7 @@ export interface CodeGenerationResult {
 
 @Injectable({ providedIn: 'root' })
 export class AiOrchestratorService {
-  private readonly apiConfig = inject(API_CONFIG);
+  private readonly gateway = inject(GatewayHttpService);
 
   /**
    * Generates a context cache for a given payload (simulating RAG document upload)
@@ -48,10 +48,10 @@ export class AiOrchestratorService {
     payload: string,
   ): Promise<ContextCacheResult> {
     const sizeBytes = new Blob([payload]).size;
-    const res = await fetch(`${this.apiConfig.baseUrl}/domain/context-cache`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName, mimeType, sizeBytes }),
+    const res = await this.gateway.postJson('/domain/context-cache', {
+      fileName,
+      mimeType,
+      sizeBytes,
     });
 
     if (!res.ok) {
@@ -69,10 +69,10 @@ export class AiOrchestratorService {
     language: SupportedLanguage,
     cacheId?: string,
   ): Promise<CodeGenerationResult> {
-    const res = await fetch(`${this.apiConfig.baseUrl}/domain/code/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ spec, language, cacheId }),
+    const res = await this.gateway.postJson('/domain/code/generate', {
+      spec,
+      language,
+      cacheId,
     });
 
     if (!res.ok) {

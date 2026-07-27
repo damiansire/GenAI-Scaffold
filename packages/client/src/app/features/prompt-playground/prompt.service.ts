@@ -1,6 +1,7 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { API_CONFIG } from '../../core/tokens/api-config';
+import { GatewayHttpService } from '../../core/services/gateway-http.service';
 import { z } from 'zod';
 
 export const promptSchema = z.object({
@@ -16,6 +17,7 @@ export type Prompt = z.infer<typeof promptSchema>;
 @Injectable({ providedIn: 'root' })
 export class PromptService {
   private readonly apiConfig = inject(API_CONFIG);
+  private readonly gateway = inject(GatewayHttpService);
 
   private readonly _promptsResource = httpResource<unknown>(() => ({
     url: `${this.apiConfig.baseUrl}/admin/prompts`,
@@ -39,10 +41,9 @@ export class PromptService {
   readonly error = computed(() => this._promptsResource.error());
 
   async updatePrompt(name: string, content: string, description: string): Promise<void> {
-    const response = await fetch(`${this.apiConfig.baseUrl}/admin/prompts/${name}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, description }),
+    const response = await this.gateway.putJson(`/admin/prompts/${name}`, {
+      content,
+      description,
     });
 
     if (!response.ok) {

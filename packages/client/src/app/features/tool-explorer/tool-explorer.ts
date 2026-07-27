@@ -11,6 +11,7 @@
 import { Component, signal, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { API_CONFIG } from '../../core/tokens/api-config';
+import { GatewayHttpService } from '../../core/services/gateway-http.service';
 import { AiStreamService } from '../../core/services/ai-stream.service';
 import { DynamicToolFormComponent } from '../../shared/components/dynamic-tool-form/dynamic-tool-form';
 
@@ -34,6 +35,7 @@ interface ToolSearchResponse {
 })
 export class ToolExplorer {
   private readonly apiConfig = inject(API_CONFIG);
+  private readonly gateway = inject(GatewayHttpService);
   readonly aiStream = inject(AiStreamService);
 
   icons = { wrench: '🔧', search: '🔍', empty: '📭' };
@@ -92,10 +94,9 @@ export class ToolExplorer {
     this.executionError.set(null);
 
     try {
-      const response = await fetch(`${this.apiConfig.baseUrl}/tools/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: dto['query'] ?? tool, limit: 5 }),
+      const response = await this.gateway.postJson('/tools/search', {
+        query: dto['query'] ?? tool,
+        limit: 5,
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
