@@ -35,6 +35,13 @@ export interface SmoothMessageController {
   isAnimationActive: () => boolean;
 }
 
+/**
+ * Upper bound on the per-frame correction applied to the drain speed. Keeping
+ * it well under 1 makes the approach to `targetSpeed` monotonic: the speed can
+ * never overshoot and flip sign, no matter how large a burst arrives.
+ */
+const MAX_SPEED_CHANGE_RATE = 0.3;
+
 type RafScheduler = (cb: (timestamp: number) => void) => number;
 type RafCanceller = (id: number) => void;
 
@@ -107,9 +114,21 @@ export function createSmoothMessage(params: SmoothMessageParams): SmoothMessageC
 
     // Adaptive speed: grow toward the queue length under backpressure so the
     // text never lags far behind the model; ease back down as it drains.
+    //
+    // The gain is CAPPED and the result is FLOORED, and both matter. The gain
+    // used to scale with the raw queue delta, so a single burst of ~12k chars
+    // produced a correction factor above 1: the step overshot past the target,
+    // `currentSpeed` went NEGATIVE, `charsToProcess` stayed at 0 and the text
+    // froze on screen for seconds while the rAF loop kept spinning.
     const targetSpeed = Math.max(startSpeed, outputQueue.length);
-    const speedChangeRate = Math.abs(outputQueue.length - lastQueueLength) * 0.0008 + 0.005;
-    currentSpeed += (targetSpeed - currentSpeed) * speedChangeRate;
+    const speedChangeRate = Math.min(
+      MAX_SPEED_CHANGE_RATE,
+      Math.abs(outputQueue.length - lastQueueLength) * 0.0008 + 0.005,
+    );
+    currentSpeed = Math.max(
+      startSpeed,
+      currentSpeed + (targetSpeed - currentSpeed) * speedChangeRate,
+    );
     lastQueueLength = outputQueue.length;
 
     const charsToProcess = Math.floor((accumulatedTime * currentSpeed) / 1000);

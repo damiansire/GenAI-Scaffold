@@ -169,6 +169,38 @@ describe('createSmoothMessage', () => {
     expect(elapsedMs).toBeLessThanOrEqual(idealMs + frameDt);
   });
 
+  it('keeps making progress on a large burst (speed never goes negative)', () => {
+    // Regression: `speedChangeRate` grew with the queue delta and was unbounded,
+    // so a single ~12k-char burst made the correction overshoot past zero and
+    // `currentSpeed` turned NEGATIVE. `charsToProcess` then stayed <= 0: the rAF
+    // loop kept spinning while NOTHING was emitted and the text froze on screen.
+    let last = '';
+    let updates = 0;
+    const ctrl = createSmoothMessage({
+      onTextUpdate: (_delta, buffer) => {
+        updates += 1;
+        last = buffer;
+      },
+    });
+
+    const burst = 'x'.repeat(20_000);
+    ctrl.pushText(burst);
+
+    const framesUsed = harness.step(16, 5000);
+
+    expect(last.length).toBe(burst.length);
+    expect(ctrl.isAnimationActive()).toBe(false);
+
+    // The defect, stated directly: with a negative speed the loop burned frames
+    // that emitted nothing. Every frame must now deliver characters (the very
+    // first one only seeds the timestamp, so it has a zero dt to spend).
+    expect(updates).toBeGreaterThanOrEqual(framesUsed - 1);
+
+    // And the whole burst drains in a few seconds of animation, not ~17s: the
+    // frozen behaviour needed ~1000 frames for this same input.
+    expect(framesUsed).toBeLessThan(300);
+  });
+
   it('ignores empty pushes without scheduling a frame', () => {
     const ctrl = createSmoothMessage({ onTextUpdate: () => {} });
 
