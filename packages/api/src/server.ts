@@ -13,6 +13,7 @@ import { errorHandler } from './api/middleware/errorHandler.js';
 import { rateLimiter } from './api/middleware/rateLimiter.js';
 import { tokenRateLimiter } from './api/middleware/tokenRateLimiter.js';
 import { aiSafetyFirewall } from './api/middleware/ai-safety.middleware.js';
+import { isValidApiKey } from './api/middleware/apiKeyAuth.js';
 import { SqliteTokenStore } from './infrastructure/rate-limit/SqliteTokenStore.js';
 import { SqliteRateLimitStore } from './infrastructure/rate-limit/SqliteRateLimitStore.js';
 import { dbService, logRequest } from './infrastructure/database/db.js';
@@ -33,12 +34,17 @@ import { registerTool } from './infrastructure/database/db.js';
 // Stability: 2 - Stable (node:http)
 import type { Server as HttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+// Stability: 2 - Stable (node:stream)
+import type { Duplex } from 'node:stream';
 // Stability: 2 - Stable (node:url)
 import { pathToFileURL } from 'node:url';
 import { logger } from './core/logger.js';
 import { config } from './core/config.js';
 
 type ServerState = 'STOPPED' | 'STARTING' | 'RUNNING' | 'STOPPING';
+
+/** Idle time after which an established WebSocket is dropped. */
+const WS_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /**
  * Main Express server configuration
@@ -50,6 +56,8 @@ export class Server extends EventEmitter {
   private state: ServerState = 'STOPPED';
   private httpServer: HttpServer | null = null;
   private tokenStore = new SqliteTokenStore();
+  /** Live WebSocket sockets, so `stop()` can close them instead of hanging. */
+  private wsSockets = new Set<Duplex>();
   private requestLimitStore = new SqliteRateLimitStore();
 
   constructor() {
@@ -197,18 +205,21 @@ export class Server extends EventEmitter {
 
     // Middleware ORDER (P2 fix): authentication is the real front gate. Inside
     // these routers the chain is `apiKeyAuth → apiLimiter → apiTokenLimiter →
-    // aiSafetyFirewall → handler`, so:
+    // handler`, so:
     //   - the limiters key by `req.user.apiKeyId` (real per-tenant buckets, not a
     //     single shared IP bucket behind a proxy/NAT), and
     //   - the (potentially heavy) safety/PII work never runs for unauthenticated
     //     callers — auth rejects them first.
-    // The cross-cutting chain is wired INSIDE each router (router.use) so it stays
-    // scoped to those paths and doesn't leak onto sibling /api mounts below.
-    const modelRoutes = createModelRoutes(modelFactory, schemaRegistry, [
-      apiLimiter,
-      apiTokenLimiter,
-      aiSafetyFirewall,
-    ]);
+    // The cross-cutting chain is wired INSIDE each router, anchored to that
+    // router's own path prefix, so it stays scoped and never runs twice for the
+    // sibling /api mounts below.
+    //
+    // `aiSafetyFirewall` is NOT in this shared chain for the model routes: it
+    // must run after the per-route body parser (multer), so modelRoutes applies
+    // it itself at the right point in the chain.
+    const postAuthChain = [apiLimiter, apiTokenLimiter];
+
+    const modelRoutes = createModelRoutes(modelFactory, schemaRegistry, postAuthChain);
     this.app.use('/api', modelRoutes);
 
     // Patrón 1: Tool Search JIT — register, search, and manage tool definitions.
@@ -218,11 +229,13 @@ export class Server extends EventEmitter {
 
     // Patrón 2: MCP Server — SSE transport for web-based MCP clients
     // stdio transport is a separate process: npm run mcp:stdio
-    const mcpRouter = createMcpSseRouter();
+    const mcpRouter = createMcpSseRouter([apiLimiter]);
     this.app.use('/mcp', mcpRouter);
 
-    // Patrones 7, 9, 10: Domain use cases (Security, IoT Telemetry, Code Generation)
-    const domainRouter = createDomainRoutes();
+    // Patrones 7, 9, 10: Domain use cases (Security, IoT Telemetry, Code Generation).
+    // Bodies here are JSON (already parsed by express.json), so the safety
+    // firewall can sit directly in the shared chain.
+    const domainRouter = createDomainRoutes([...postAuthChain, aiSafetyFirewall]);
     this.app.use('/api/domain', domainRouter);
 
     // Enterprise Modules. Each router gates auth FIRST (router.use(apiKeyAuth))
@@ -319,6 +332,31 @@ export class Server extends EventEmitter {
           return;
         }
 
+        // The upgrade path never goes through Express, so none of the router
+        // middleware applies: auth and origin checks have to be done here or the
+        // socket is anonymous and cross-site reachable. Fail closed on both.
+        const apiKeyHeader = req.headers['x-api-key'];
+        const providedKey = Array.isArray(apiKeyHeader) ? apiKeyHeader[0] : apiKeyHeader;
+        if (!providedKey || !isValidApiKey(providedKey)) {
+          logger.warn('WebSocket upgrade rejected: missing or invalid API key', {
+            origin: req.headers.origin,
+          });
+          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+
+        // Browsers do not apply the same-origin policy to WebSockets, so the
+        // Origin header is the only cross-site defense available here. It is
+        // checked against the SAME allowlist CORS uses for HTTP.
+        const origin = req.headers.origin;
+        if (origin && !config.server.allowedOrigins.includes(origin)) {
+          logger.warn('WebSocket upgrade rejected: origin not allowed', { origin });
+          socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+
         // Standard WebSocket Handshake per RFC 6455
         const magicString = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
         const acceptKey = createHash('sha1')
@@ -334,7 +372,20 @@ export class Server extends EventEmitter {
         ].join('\r\n');
 
         socket.write(responseHeaders);
-        logger.info('Native WebSocket connection established on /api/ws');
+        // Explicit limits (never implicit): an idle socket is closed instead of
+        // being held open forever, and every live socket is tracked so shutdown
+        // is deterministic.
+        // `upgrade` hands us a Duplex; at runtime it is always a net.Socket, so
+        // the idle timeout is applied when the method is actually there.
+        const timeoutCapable = socket as Duplex & {
+          setTimeout?: (ms: number, cb: () => void) => void;
+        };
+        timeoutCapable.setTimeout?.(WS_IDLE_TIMEOUT_MS, () => socket.destroy());
+        this.wsSockets.add(socket);
+        socket.on('close', () => this.wsSockets.delete(socket));
+        logger.info('Native WebSocket connection established on /api/ws', {
+          origin: req.headers.origin ?? null,
+        });
 
         socket.on('data', (_buffer) => {
           // In a real implementation we would parse WebSocket frames here.
@@ -362,6 +413,12 @@ export class Server extends EventEmitter {
     if (this.state !== 'RUNNING' && this.state !== 'STARTING') return;
     this.changeState('STOPPING');
     logger.info('Shutting down Server Gracefully...');
+
+    // Upgraded sockets are NOT tracked by http.Server's own connection close
+    // logic, so `close()` would wait on them forever. Drop them first, then let
+    // close() drain the ordinary HTTP keep-alives.
+    for (const socket of this.wsSockets) socket.destroy();
+    this.wsSockets.clear();
 
     return new Promise((resolve) => {
       const finishShutdown = () => {

@@ -24,7 +24,7 @@
 import { createInterface } from 'node:readline';
 // Stability: 2 - Stable (node:crypto)
 import { randomUUID } from 'node:crypto';
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, RequestHandler } from 'express';
 import { requestContext, createRootContext } from '../../core/async-context.js';
 import { logger } from '../../core/logger.js';
 import { apiKeyAuth } from '../../api/middleware/apiKeyAuth.js';
@@ -140,15 +140,19 @@ function sendSseEvent(res: Response, data: unknown): void {
  *
  * Usage in server.ts:
  *   import { createMcpSseRouter } from './infrastructure/mcp/mcp-server.js';
- *   app.use('/mcp', createMcpSseRouter());
+ *   app.use('/mcp', createMcpSseRouter([apiLimiter]));
+ *
+ * @param postAuthChain - Cross-cutting chain (request limiter) applied after
+ *   authentication. Omitting it left /mcp as the one authenticated surface with
+ *   no rate limit, while exposing arbitrary tool execution.
  */
-export function createMcpSseRouter(): Router {
+export function createMcpSseRouter(postAuthChain: RequestHandler[] = []): Router {
   const router = Router();
 
   // P1 fix: the MCP transport exposes log recon and arbitrary tool execution.
   // Authenticate every connection/message with the same API key gate as the
   // rest of the gateway. Without this, /mcp/sse + /mcp/message were anonymous.
-  router.use(apiKeyAuth);
+  router.use(apiKeyAuth, ...postAuthChain);
 
   // ─── GET /mcp/sse ─────────────────────────────────────────────────────────
   // Opens a persistent SSE connection. The client receives a session ID in the

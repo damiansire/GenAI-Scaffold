@@ -5,6 +5,7 @@ import { SchemaRegistry } from '../../infrastructure/ai/registry.js';
 import { apiKeyAuth } from '../middleware/apiKeyAuth.js';
 import { rbacModelMiddleware } from '../middleware/rbac.js';
 import { createDynamicValidationMiddleware } from '../middleware/dynamicValidation.js';
+import { aiSafetyFirewall } from '../middleware/ai-safety.middleware.js';
 import {
   createModelController,
   createModelInfoController,
@@ -16,9 +17,9 @@ import {
  * Create model routes with dependencies
  * @param modelFactory - Instance of ModelFactory
  * @param schemaRegistry - Instance of SchemaRegistry
- * @param postAuthChain - Cross-cutting middlewares (rate limiters, safety
- *   firewall) that must run AFTER authentication but before the controllers.
- *   Applied via router.use so auth is always the front gate.
+ * @param postAuthChain - Cross-cutting middlewares (rate limiters) that must run
+ *   AFTER authentication but before the controllers. Applied via router.use so
+ *   auth is always the front gate.
  * @returns Express router
  */
 export function createModelRoutes(
@@ -29,8 +30,13 @@ export function createModelRoutes(
   const router = Router();
 
   // P2 middleware order: auth FIRST (front gate), then the per-key rate limiters
-  // and safety/PII firewall — which now see a populated req.user.apiKeyId.
-  router.use(apiKeyAuth, ...postAuthChain);
+  // — which now see a populated req.user.apiKeyId.
+  //
+  // The chain is anchored to `/models`, not to the whole router: this router is
+  // mounted on `/api`, so an unpathed `router.use` ran the entire chain a SECOND
+  // time for every sibling `/api/*` mount (double rate-limit hits, double safety
+  // work) before their own routers ran it.
+  router.use('/models', apiKeyAuth, ...postAuthChain);
 
   // Create middleware instances
   const dynamicValidation = createDynamicValidationMiddleware(schemaRegistry);
@@ -165,18 +171,31 @@ export function createModelRoutes(
   router.get('/models/:modelId', rbacModelMiddleware, modelInfoController);
 
   /**
+   * Parses the body for this route, whatever its Content-Type: `express.json()`
+   * covers JSON, this covers `multipart/form-data`.
+   *
+   * ORDER IS A SECURITY PROPERTY: the safety firewall inspects `req.body`, so it
+   * MUST run after this. When the firewall ran first, a multipart request
+   * reached it with an unparsed (empty) body, the middleware's `!req.body` guard
+   * let it through, and both PII masking and prompt-injection classification
+   * were skipped entirely — the whole firewall was bypassable by switching
+   * Content-Type.
+   */
+  const parseBodyForRoute: RequestHandler = (req, res, next) => {
+    const modelId = req.params['modelId'] || '';
+    const multerMiddleware = createDynamicMulterMiddleware(modelId);
+    multerMiddleware(req, res, next);
+  };
+
+  /**
    * POST /models/:modelId/invoke - Invoke a specific model
    * Applies authentication, dynamic validation, and file upload middleware
    */
   router.post(
     '/models/:modelId/invoke',
     rbacModelMiddleware,
-    (req, res, next) => {
-      // Apply dynamic multer middleware based on model requirements
-      const modelId = req.params['modelId'] || '';
-      const multerMiddleware = createDynamicMulterMiddleware(modelId);
-      multerMiddleware(req, res, next);
-    },
+    parseBodyForRoute,
+    aiSafetyFirewall,
     dynamicValidation,
     modelController,
   );
@@ -187,11 +206,8 @@ export function createModelRoutes(
   router.post(
     '/models/:modelId/stream',
     rbacModelMiddleware,
-    (req, res, next) => {
-      const modelId = req.params['modelId'] || '';
-      const multerMiddleware = createDynamicMulterMiddleware(modelId);
-      multerMiddleware(req, res, next);
-    },
+    parseBodyForRoute,
+    aiSafetyFirewall,
     dynamicValidation,
     streamController,
   );

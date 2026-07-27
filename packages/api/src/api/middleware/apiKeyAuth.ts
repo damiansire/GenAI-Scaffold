@@ -68,6 +68,19 @@ export function apiKeyAuth(req: Request, _res: Response, next: NextFunction): vo
   }
 }
 /**
+ * Boolean form of `validateApiKey`, for transports that never reach Express
+ * middleware (the raw HTTP `upgrade` handler for WebSockets). Fails closed:
+ * any error while resolving the configured keys means "not valid".
+ */
+export function isValidApiKey(apiKey: string): boolean {
+  try {
+    return validateApiKey(apiKey).isValid;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Validate API key against environment variables
  * @param apiKey - The API key to validate
  * @returns Validation result with key information

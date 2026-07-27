@@ -30,6 +30,26 @@ export const aiSafetyFirewall = async (
   const traceId = ctx?.traceId || 'unknown';
 
   if (!req.body || typeof req.body !== 'object') {
+    // A request that CARRIES a body but arrives here unparsed means the firewall
+    // was wired before the body parser. Failing open there is how the whole
+    // filter got bypassed with `Content-Type: multipart/form-data`, so this is a
+    // loud wiring error, never a silent pass.
+    const contentType = req.headers?.['content-type'];
+    if (contentType && req.method !== 'GET' && req.method !== 'HEAD') {
+      logger.error('AI Safety Firewall ran before the body was parsed (middleware order bug)', {
+        traceId,
+        path: req.path,
+        contentType,
+      });
+      res.status(503).json({
+        error: 'Service Unavailable',
+        message: 'Safety inspection could not run on this request.',
+        code: 'ERR_AI_SAFETY_UNPARSED_BODY',
+      });
+      return;
+    }
+    // Bodyless requests (GET/HEAD, or no Content-Type at all) have nothing to
+    // inspect.
     return next();
   }
 

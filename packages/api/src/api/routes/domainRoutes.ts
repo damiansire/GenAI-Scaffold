@@ -12,7 +12,7 @@
  *   - Structured JSON error responses
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, RequestHandler } from 'express';
 import { securityAnalysisUseCase } from '../../application/useCases/security-analysis.usecase.js';
 import {
   telemetryStreamUseCase,
@@ -26,15 +26,26 @@ import { contextCacheUseCase } from '../../application/useCases/context-cache.us
 import { apiKeyAuth } from '../middleware/apiKeyAuth.js';
 import { logger } from '../../core/logger.js';
 
-export function createDomainRoutes(): Router {
+/**
+ * @param postAuthChain - Same cross-cutting chain the other routers get (request
+ *   limiter, token budget, safety firewall). It used to be omitted here, so
+ *   `/api/domain/*` was the one authenticated surface with no rate limit, no
+ *   token budget and no safety inspection — including the CPU-heavy log
+ *   analysis endpoint.
+ */
+export function createDomainRoutes(postAuthChain: RequestHandler[] = []): Router {
   const router = Router();
+
+  // Auth is the front gate, then the shared chain — same shape as modelRoutes,
+  // toolRoutes and userRoutes.
+  router.use(apiKeyAuth, ...postAuthChain);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Patrón 7: Security Analysis
   // POST /domain/security/analyze
   // Body: { logs: string }
   // ──────────────────────────────────────────────────────────────────────────
-  router.post('/security/analyze', apiKeyAuth, async (req: Request, res: Response) => {
+  router.post('/security/analyze', async (req: Request, res: Response) => {
     const { logs } = req.body as { logs?: string };
 
     if (!logs || typeof logs !== 'string') {
@@ -61,7 +72,7 @@ export function createDomainRoutes(): Router {
   // Patrón 9: IoT Telemetry — Device List
   // GET /domain/telemetry/devices
   // ──────────────────────────────────────────────────────────────────────────
-  router.get('/telemetry/devices', apiKeyAuth, (_req: Request, res: Response) => {
+  router.get('/telemetry/devices', (_req: Request, res: Response) => {
     res.json({ devices: DEVICES });
   });
 
@@ -72,7 +83,7 @@ export function createDomainRoutes(): Router {
   // Each SSE event is a TelemetryFrame JSON payload.
   // Client disconnect aborts the AsyncGenerator via AbortController.
   // ──────────────────────────────────────────────────────────────────────────
-  router.get('/telemetry/stream', apiKeyAuth, async (req: Request, res: Response) => {
+  router.get('/telemetry/stream', async (req: Request, res: Response) => {
     const deviceParam = (req.query['devices'] as string | undefined) ?? '';
     const deviceIds = deviceParam
       ? deviceParam
@@ -118,7 +129,7 @@ export function createDomainRoutes(): Router {
   // POST /domain/code/generate
   // Body: { spec: string, language?: SupportedLanguage }
   // ──────────────────────────────────────────────────────────────────────────
-  router.post('/code/generate', apiKeyAuth, async (req: Request, res: Response) => {
+  router.post('/code/generate', async (req: Request, res: Response) => {
     const { spec, language = 'typescript' } = req.body as {
       spec?: string;
       language?: SupportedLanguage;
@@ -165,7 +176,7 @@ export function createDomainRoutes(): Router {
   // POST /domain/context-cache
   // GET  /domain/context-cache/:cacheId
   // ──────────────────────────────────────────────────────────────────────────
-  router.post('/context-cache', apiKeyAuth, async (req: Request, res: Response) => {
+  router.post('/context-cache', async (req: Request, res: Response) => {
     const { fileName, mimeType, sizeBytes } = req.body as {
       fileName?: string;
       mimeType?: string;
@@ -187,7 +198,7 @@ export function createDomainRoutes(): Router {
     }
   });
 
-  router.get('/context-cache/:cacheId', apiKeyAuth, async (req: Request, res: Response) => {
+  router.get('/context-cache/:cacheId', async (req: Request, res: Response) => {
     const { cacheId } = req.params;
 
     try {

@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
-import { apiKeyAuth } from '../middleware/apiKeyAuth.js';
+import { apiKeyAuth, requirePermissions } from '../middleware/apiKeyAuth.js';
 import {
   ToolSearchUseCase,
   ToolGetByNameUseCase,
@@ -74,25 +74,34 @@ export function createToolRoutes(postAuthChain: RequestHandler[] = []): Router {
   // ─── POST /api/tools/register ────────────────────────────────────────────────
   // Allows registering or updating tool definitions at runtime without a
   // server restart. Useful for plugin-based tool discovery.
-  router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const dto = req.body as {
-        name?: string;
-        description?: string;
-        schema?: object;
-        category?: string;
-      };
-      const result = await registerToolUseCase.execute({
-        name: dto.name ?? '',
-        description: dto.description ?? '',
-        schema: dto.schema ?? {},
-        ...(dto.category !== undefined && { category: dto.category }),
-      });
-      res.status(201).json(result);
-    } catch (err) {
-      next(err);
-    }
-  });
+  //
+  // WRITE is admin-only. Registration does an INSERT OR REPLACE on definitions
+  // that are injected verbatim into the LLM context, so any read-only key could
+  // otherwise rewrite the description/schema of an existing tool and steer every
+  // other tenant's agent. Search and get stay open to any valid key.
+  router.post(
+    '/register',
+    requirePermissions(['admin']),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const dto = req.body as {
+          name?: string;
+          description?: string;
+          schema?: object;
+          category?: string;
+        };
+        const result = await registerToolUseCase.execute({
+          name: dto.name ?? '',
+          description: dto.description ?? '',
+          schema: dto.schema ?? {},
+          ...(dto.category !== undefined && { category: dto.category }),
+        });
+        res.status(201).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   return router;
 }
