@@ -19,8 +19,12 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([apiKeyInterceptor])),
     {
       provide: API_CONFIG,
+      // Both values come from the environment file the build selected: the
+      // production build swaps in `environment.prod.ts` (same-origin `/api`, no
+      // key). A hardcoded `http://localhost:3000` fallback used to live here and
+      // ended up compiled into the production bundle.
       useValue: {
-        baseUrl: environment.apiUrl || 'http://localhost:3000/api',
+        baseUrl: environment.apiUrl,
         apiKey: environment.apiKey ?? '',
       },
     },
