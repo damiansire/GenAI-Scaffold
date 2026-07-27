@@ -188,6 +188,26 @@ export function createModelRoutes(
   };
 
   /**
+   * Bridges the files multer parsed (`upload.any()` fills `req.files`, never
+   * `req.body`) into `req.body` under each file's field name. Without this
+   * bridge the multimodal path was broken end to end: the schema's
+   * `required: ['imageFile']` rejected every upload (the field never reached
+   * the body) and the plugin read `params.imageFile`, which nobody set.
+   *
+   * ORDER: after the safety firewall (its text scan must not traverse binary
+   * buffers) and before validation (so the schema sees the field).
+   */
+  const attachUploadedFiles: RequestHandler = (req, _res, next) => {
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      req.body = req.body ?? {};
+      for (const file of req.files) {
+        req.body[file.fieldname] = file;
+      }
+    }
+    next();
+  };
+
+  /**
    * POST /models/:modelId/invoke - Invoke a specific model
    * Applies authentication, dynamic validation, and file upload middleware
    */
@@ -196,6 +216,7 @@ export function createModelRoutes(
     rbacModelMiddleware,
     parseBodyForRoute,
     aiSafetyFirewall,
+    attachUploadedFiles,
     dynamicValidation,
     modelController,
   );
@@ -208,6 +229,7 @@ export function createModelRoutes(
     rbacModelMiddleware,
     parseBodyForRoute,
     aiSafetyFirewall,
+    attachUploadedFiles,
     dynamicValidation,
     streamController,
   );

@@ -104,6 +104,37 @@ export function createDynamicValidationMiddleware(schemaRegistry: SchemaRegistry
 }
 
 /**
+ * Rewrites multipart file properties for runtime validation.
+ *
+ * Model schemas declare uploads with the OpenAPI convention
+ * `{ type: 'string', format: 'binary' }`, but at validation time the field
+ * holds the parsed multer file OBJECT (fieldname/mimetype/size/buffer), bridged
+ * into the body by the route. Validating the wire schema as-is rejected every
+ * legitimate upload with a type error, so binary properties are validated here
+ * for presence and object shape; content rules (mimetype, size) stay in the
+ * plugin, which already enforces them.
+ */
+function toRuntimeSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map(toRuntimeSchema);
+  }
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  const source = schema as Record<string, unknown>;
+  if (source['format'] === 'binary') {
+    return { type: 'object', description: source['description'] };
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(source)) {
+    result[key] = toRuntimeSchema(value);
+  }
+  return result;
+}
+
+/**
  * Validate request body against JSON schema using AJV
  * @param body - Request body to validate
  * @param schema - JSON Schema to validate against
@@ -111,8 +142,8 @@ export function createDynamicValidationMiddleware(schemaRegistry: SchemaRegistry
  * @returns Validation result with detailed errors
  */
 function validateRequestBody(body: any, schema: any, ajv: Ajv): ValidationResult {
-  // Compile the schema
-  const validate = ajv.compile(schema);
+  // Compile the schema (with binary/file properties adapted to their runtime shape)
+  const validate = ajv.compile(toRuntimeSchema(schema) as object);
 
   // Perform validation
   const isValid = validate(body);
