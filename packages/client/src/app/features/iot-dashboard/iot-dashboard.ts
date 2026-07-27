@@ -1,7 +1,15 @@
 /**
  * IotDashboard — Patrón 9: IoT Real-time Telemetry (Frontend)
  *
- * Connects to GET /api/domain/telemetry/stream via native EventSource.
+ * Connects to GET /api/domain/telemetry/stream.
+ *
+ * Transport note: the route is behind `apiKeyAuth`, and the native `EventSource`
+ * cannot send request headers, so it could never carry `X-API-Key` and the
+ * stream simply never connected. It uses fetch + ReadableStream through
+ * `GatewayHttpService` instead, reusing the shared incremental SSE reader.
+ * Passing the key by query string was rejected on purpose: it would end up in
+ * access logs.
+ *
  * Renders live device cards that update in place (no full re-render).
  */
 import {
@@ -12,7 +20,8 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { API_CONFIG } from '../../core/tokens/api-config';
+import { GatewayHttpService } from '../../core/services/gateway-http.service';
+import { readSseRecords } from '../../../core/streaming/sse-reader';
 
 type AlertLevel = 'NORMAL' | 'WARNING' | 'CRITICAL';
 
@@ -62,8 +71,9 @@ const DEVICE_TYPE_ICONS: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IotDashboard implements OnDestroy {
-  private readonly apiConfig = inject(API_CONFIG);
-  private eventSource: EventSource | null = null;
+  private readonly gateway = inject(GatewayHttpService);
+  /** Aborts the in-flight telemetry stream (stop button, re-entry, destroy). */
+  private controller: AbortController | null = null;
 
   // ─── State ───────────────────────────────────────────────────────────────
   isStreaming = signal(false);
@@ -115,62 +125,81 @@ export class IotDashboard implements OnDestroy {
 
   // ─── Stream control ───────────────────────────────────────────────────────
   startStream(): void {
-    if (this.eventSource) this.stopStream();
+    this.stopStream();
 
     this.isStreaming.set(true);
     this.connectionError.set(null);
     this.totalFrames.set(0);
     this.alerts.set([]);
 
-    const url = `${this.apiConfig.baseUrl}/domain/telemetry/stream`;
-    this.eventSource = new EventSource(url);
+    this.controller = new AbortController();
+    void this.consumeStream(this.controller.signal);
+  }
 
-    // First event: device list (bootstrap)
-    this.eventSource.addEventListener('devices', (e) => {
-      const deviceConfigs: DeviceConfig[] = JSON.parse(e.data);
-      const map = new Map<string, DeviceState>();
-      for (const config of deviceConfigs) {
-        map.set(config.id, { config, latest: null, history: [], frameCount: 0 });
+  private async consumeStream(abortSignal: AbortSignal): Promise<void> {
+    try {
+      const response = await this.gateway.fetch('/domain/telemetry/stream', {
+        headers: { Accept: 'text/event-stream' },
+        signal: abortSignal,
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.body) throw new Error('Telemetry stream returned no body.');
+
+      for await (const record of readSseRecords(response.body, abortSignal)) {
+        if (record.event === 'devices') {
+          this.applyDeviceList(JSON.parse(record.data) as DeviceConfig[]);
+        } else {
+          this.applyFrame(JSON.parse(record.data) as TelemetryFrame);
+        }
       }
-      this.devices.set(map);
-    });
-
-    // Default events: telemetry frames
-    this.eventSource.onmessage = (e) => {
-      const frame: TelemetryFrame = JSON.parse(e.data);
-      this.totalFrames.update((n) => n + 1);
-
-      // Update device state immutably (new Map for Signal change detection)
-      const map = new Map(this.devices());
-      const state = map.get(frame.deviceId);
-      if (state) {
-        const history = [...state.history, frame.value].slice(-HISTORY_SIZE);
-        map.set(frame.deviceId, {
-          ...state,
-          latest: frame,
-          history,
-          frameCount: state.frameCount + 1,
-        });
-        this.devices.set(map);
-      }
-
-      // Track alerts
-      if (frame.alertLevel !== 'NORMAL') {
-        this.alerts.update((prev) => [frame, ...prev].slice(0, 50));
-      }
-    };
-
-    this.eventSource.onerror = () => {
-      this.connectionError.set('Stream connection lost. Click Start to reconnect.');
       this.isStreaming.set(false);
-      this.eventSource?.close();
-      this.eventSource = null;
-    };
+    } catch (err) {
+      if (abortSignal.aborted) return; // intentional stop, not a failure
+      this.connectionError.set(
+        err instanceof Error
+          ? `Stream connection lost: ${err.message}. Click Start to reconnect.`
+          : 'Stream connection lost. Click Start to reconnect.',
+      );
+      this.isStreaming.set(false);
+    }
+  }
+
+  /** First event of the stream: the device roster used to bootstrap the cards. */
+  private applyDeviceList(deviceConfigs: DeviceConfig[]): void {
+    const map = new Map<string, DeviceState>();
+    for (const config of deviceConfigs) {
+      map.set(config.id, { config, latest: null, history: [], frameCount: 0 });
+    }
+    this.devices.set(map);
+  }
+
+  private applyFrame(frame: TelemetryFrame): void {
+    this.totalFrames.update((n) => n + 1);
+
+    // Update device state immutably (new Map for Signal change detection)
+    const map = new Map(this.devices());
+    const state = map.get(frame.deviceId);
+    if (state) {
+      const history = [...state.history, frame.value].slice(-HISTORY_SIZE);
+      map.set(frame.deviceId, {
+        ...state,
+        latest: frame,
+        history,
+        frameCount: state.frameCount + 1,
+      });
+      this.devices.set(map);
+    }
+
+    // Track alerts
+    if (frame.alertLevel !== 'NORMAL') {
+      this.alerts.update((prev) => [frame, ...prev].slice(0, 50));
+    }
   }
 
   stopStream(): void {
-    this.eventSource?.close();
-    this.eventSource = null;
+    this.controller?.abort();
+    this.controller = null;
     this.isStreaming.set(false);
   }
 
