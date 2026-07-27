@@ -38,6 +38,9 @@
   "bugs": {
     "url": "https://github.com/damiansire/genai-fullstack-blueprint/issues"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2"
   }

@@ -1,15 +1,13 @@
 /* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
 /* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {
+  // Estrictez: heredada de ../../tsconfig.base.json (fuente única del monorepo).
+  // Acá solo va lo propio de Angular/bundler. El techo que le falta respecto de
+  // packages/api (exactOptionalPropertyTypes, noUncheckedIndexedAccess) está
+  // registrado como deuda: prenderlo hoy rompe el typecheck en 5 archivos.
+  "extends": "../../tsconfig.base.json",
   "compileOnSave": false,
   "compilerOptions": {
-    "strict": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "skipLibCheck": true,
-    "isolatedModules": true,
     "importHelpers": true,
     "target": "ES2022",
     "module": "preserve"

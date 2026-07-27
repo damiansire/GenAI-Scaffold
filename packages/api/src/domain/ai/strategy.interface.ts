@@ -1,6 +1,6 @@
 import type { ProcessContext } from './types.js';
 
-export { ProcessContext, ModelMetadata, ModelOutput } from './types.js';
+export type { ProcessContext, ModelMetadata, ModelOutput } from './types.js';
 
 /**
  * Generic interface for model strategies that process input and return output

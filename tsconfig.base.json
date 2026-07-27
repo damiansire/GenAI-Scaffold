@@ -1,0 +1,21 @@
+{
+  // Base de estrictez del monorepo. La barra vive en UN solo lugar: los tsconfig
+  // de cada workspace la extienden y solo agregan lo propio de su plataforma
+  // (module/target/lib, decoradores, angularCompilerOptions). Un tsconfig hoja
+  // que vuelve a declarar un flag de estrictez es drift, y es greppable.
+  //
+  // Barra: refs/node-ts/from-consensus-2026-07-16.md, consenso 1 (Backstage
+  // packages/cli/config/tsconfig.json, @directus/tsconfig, @n8n/typescript-config).
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true
+  }
+}
