@@ -11,6 +11,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Server } from './server.ts';
+import { SqliteTokenStore } from './infrastructure/rate-limit/SqliteTokenStore.ts';
 
 // Every request closes its socket, so `server.close()` in teardown never waits
 // on an idle undici keep-alive connection (which on Windows could otherwise race
@@ -95,5 +96,26 @@ describe('Server — HTTP integration (real app, ephemeral port)', () => {
     // wrapper containing one. We only assert it responded with JSON data, not an
     // error envelope — the point is the chain ran to the handler and back.
     assert.ok(body && typeof body === 'object', 'handler returned a JSON payload');
+  });
+
+  it('GET /api/user/quota reports tokens CONSUMED as used, not as available', async () => {
+    // Spend a known amount through the same store the limiter writes to. The
+    // key identity is the env var name (see apiKeyAuth.getValidApiKeys).
+    await new SqliteTokenStore().consume('API_KEY_1', 1_000, 60_000);
+
+    const res = await fetch(`${base}/api/user/quota`, {
+      headers: { ...NO_KEEPALIVE, 'x-api-key': VALID_KEY },
+    });
+    assert.equal(res.status, 200);
+
+    const body = (await res.json()) as {
+      usedTokens: number;
+      availableTokens: number;
+      maxTokens: number;
+      usagePercentage: number;
+    };
+    assert.equal(body.usedTokens, 1_000, 'spending 1000 tokens must report 1000 used');
+    assert.equal(body.availableTokens, body.maxTokens - 1_000);
+    assert.equal(body.usagePercentage, 2, '1000 of 50000 is 2% used, not 98%');
   });
 });

@@ -8,7 +8,8 @@ interface QuotaResponse {
   maxTokens: number;
   availableTokens: number;
   usedTokens: number;
-  lastRefill: string;
+  /** Length of the budget window in milliseconds (the budget is per window). */
+  windowMs: number;
   usagePercentage: number;
 }
 
@@ -29,6 +30,30 @@ export class TokenDashboard {
 
   quota = computed(() => this.quotaResource.value());
   isLoading = computed(() => this.quotaResource.isLoading());
+
+  /**
+   * Human-readable failure reason, or null. Without this the template rendered
+   * an empty screen whenever the quota request failed (a 401 from the
+   * fail-closed gateway is the common case), which reads as "no data" instead
+   * of "the call failed".
+   */
+  errorMessage = computed(() => {
+    const err = this.quotaResource.error();
+    if (!err) return null;
+    return err instanceof Error ? err.message : 'Could not load quota data.';
+  });
+
+  /** Window length rendered for humans (the budget is per window, not monthly). */
+  windowLabel = computed(() => {
+    const q = this.quota();
+    if (!q) return '';
+    const seconds = Math.round(q.windowMs / 1000);
+    return seconds >= 60 ? `${Math.round(seconds / 60)} min` : `${seconds} s`;
+  });
+
+  retry(): void {
+    this.quotaResource.reload();
+  }
 
   // Helper for UI ring visualization
   strokeDashoffset = computed(() => {

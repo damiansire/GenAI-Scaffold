@@ -166,3 +166,33 @@
   padding: 3rem;
   color: var(--text-3);
 }
+
+.error-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  border: 1px solid var(--border-color, #ff475733);
+  border-radius: 12px;
+  background: #ff47570f;
+
+  .error-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ff4757;
+    margin: 0 0 0.5rem;
+  }
+
+  .error-detail {
+    color: var(--text-3);
+    margin: 0 0 1.25rem;
+  }
+
+  .retry-button {
+    padding: 0.6rem 1.4rem;
+    border: 1px solid #ff4757;
+    border-radius: 8px;
+    background: transparent;
+    color: #ff4757;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}

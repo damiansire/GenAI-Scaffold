@@ -183,15 +183,16 @@ export class Server extends EventEmitter {
     // restarts and is shared across the node; swap to InMemoryRateLimitStore for
     // a pure single-process setup. Keyed by API-key identity once auth has run.
     const apiLimiter = rateLimiter({
-      windowMs: 60 * 1000, // 1 minute
-      max: 100, // limit each API Key (or IP, pre-auth) to 100 requests per window
+      windowMs: config.rateLimit.windowMs,
+      max: config.rateLimit.maxRequests,
       store: this.requestLimitStore,
     });
 
-    // Apply Token Rate Limiter to /api routes (e.g. 50000 tokens per minute limit)
+    // Token budget limiter. Same named config fields the quota dashboard reads,
+    // so what is reported and what is enforced can never diverge.
     const apiTokenLimiter = tokenRateLimiter(this.tokenStore, {
-      windowMs: 60 * 1000,
-      maxTokens: 50000,
+      windowMs: config.rateLimit.windowMs,
+      maxTokens: config.rateLimit.maxTokens,
     });
 
     // Middleware ORDER (P2 fix): authentication is the real front gate. Inside
@@ -229,7 +230,7 @@ export class Server extends EventEmitter {
     // authenticated req.user.apiKeyId rather than a shared pre-auth IP bucket.
     // Admin prompt routes additionally require the `admin` permission.
     this.app.use('/api/admin/prompts', createPromptRoutes([apiLimiter]));
-    this.app.use('/api/user', createUserRoutes([apiLimiter]));
+    this.app.use('/api/user', createUserRoutes(this.tokenStore, [apiLimiter]));
     this.app.use('/api/sessions', createSessionRoutes([apiLimiter]));
 
     // Seed Tool Registry with domain tools (Patrón 1 integration)

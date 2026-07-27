@@ -11,6 +11,12 @@
 
   @if (isLoading()) {
     <div class="loading-state">Loading quota data...</div>
+  } @else if (errorMessage(); as message) {
+    <div class="error-state" role="alert">
+      <p class="error-title">Could not load your quota</p>
+      <p class="error-detail">{{ message }}</p>
+      <button type="button" class="retry-button" (click)="retry()">Retry</button>
+    </div>
   } @else if (quota(); as q) {
     <div class="metrics-grid">
       <!-- Circular Progress Card -->
@@ -59,8 +65,8 @@
         <div class="card stat-card">
           <span class="stat-icon">⏱️</span>
           <div class="stat-details">
-            <span class="stat-label">Last Refill Date</span>
-            <span class="stat-value">{{ q.lastRefill | date: 'medium' }}</span>
+            <span class="stat-label">Budget Window</span>
+            <span class="stat-value">{{ windowLabel() }}</span>
           </div>
         </div>
       </div>
