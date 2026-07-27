@@ -628,6 +628,20 @@ export class DatabaseService extends EventEmitter {
   }
 
   /**
+   * Same write as `updateRateLimitToken`, but PROPAGATES the failure instead of
+   * swallowing it. This is the variant the token limiter must use: a budget
+   * write that silently no-ops turns a documented fail-closed limiter into a
+   * fail-open one (unmetered spend against paid APIs on any DB hiccup).
+   * Mirrors the posture already taken by `hitRequestLimit`.
+   */
+  public updateRateLimitTokenOrThrow(identifier: string, tokens: number, lastRefill: string): void {
+    if (!this.updateRateLimitStmt) {
+      throw new Error('Token rate limit store not initialized');
+    }
+    this.updateRateLimitStmt.run(identifier, tokens, lastRefill);
+  }
+
+  /**
    * Atomically records one request for `identifier` in the current window and
    * returns the post-increment {count, resetTime}. Backs SqliteRateLimitStore.
    * Throws on DB failure so the limiter can fail closed (never silently 0).
@@ -662,6 +676,25 @@ export class DatabaseService extends EventEmitter {
       );
       return null;
     }
+  }
+
+  /**
+   * Same read as `getRateLimitToken`, but PROPAGATES a DB failure instead of
+   * reporting "no record" (which the limiter cannot tell apart from "under
+   * budget"). Used by SqliteTokenStore so `tokenRateLimiter` can fail closed.
+   */
+  public getRateLimitTokenOrThrow(
+    identifier: string,
+  ): { tokens: number; lastRefill: string } | null {
+    if (!this.getRateLimitStmt) {
+      throw new Error('Token rate limit store not initialized');
+    }
+    const row = this.getRateLimitStmt.get(identifier) as {
+      tokens: number;
+      last_refill: string;
+    } | null;
+    if (!row) return null;
+    return { tokens: row.tokens, lastRefill: row.last_refill };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -729,6 +762,8 @@ export const { quantizeToInt8 } = DatabaseService;
 // Rate Limit and Context Cache exports
 export const updateRateLimitToken = dbService.updateRateLimitToken.bind(dbService);
 export const getRateLimitToken = dbService.getRateLimitToken.bind(dbService);
+export const updateRateLimitTokenOrThrow = dbService.updateRateLimitTokenOrThrow.bind(dbService);
+export const getRateLimitTokenOrThrow = dbService.getRateLimitTokenOrThrow.bind(dbService);
 export const hitRequestLimit = dbService.hitRequestLimit.bind(dbService);
 export const saveContextCache = dbService.saveContextCache.bind(dbService);
 export const getContextCache = dbService.getContextCache.bind(dbService);
