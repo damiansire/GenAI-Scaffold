@@ -124,7 +124,12 @@ export class Server extends EventEmitter {
           path: req.path,
           traceId,
         });
-        logRequest(req.method, req.path, duration, traceId);
+        // Liveness/readiness probes fire every few seconds forever: persisting
+        // them would pay a synchronous SQLite write per probe and grow
+        // request_logs without bound, for rows nobody queries.
+        if (!req.path.startsWith('/health')) {
+          logRequest(req.method, req.path, duration, traceId);
+        }
       });
 
       // Patrón 5: seed a full agentic root span (depth=0) for this request.

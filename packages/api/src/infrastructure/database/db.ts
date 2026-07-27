@@ -73,6 +73,12 @@ export class DatabaseService extends EventEmitter {
 
       // Habilitar Write-Ahead Logging (WAL) para concurrencia masiva (Mitigación de thread bottleneck)
       this.db.exec('PRAGMA journal_mode = WAL;');
+      // WAL + synchronous=NORMAL is the documented pairing: without it SQLite
+      // keeps the FULL default and fsyncs the WAL on EVERY commit, which this
+      // gateway pays synchronously on the event loop once per request (request
+      // log + rate-limit writes). NORMAL only relaxes durability for the last
+      // commits before an OS crash — consistency is never at risk in WAL mode.
+      this.db.exec('PRAGMA synchronous = NORMAL;');
 
       // Apply Proxy Pattern to intercept queries (Node.js Design Patterns)
       this.proxiedDb = new Proxy(this.db, {
