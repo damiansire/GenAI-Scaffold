@@ -242,9 +242,10 @@ export class InvokeModelUseCase extends UseCase<InvokeModelDTO, any> {
     // global, and tenant B gets tenant A's stored answer for the same prompt.
     // Keys are namespaced per tenant, so the worst case is a redundant model
     // call, never a cross-tenant read.
+    const tenantId = dto.context?.userId ?? 'anonymous';
     const hashPayload = stableStringify({
       modelId: dto.modelId,
-      tenant: dto.context?.userId ?? 'anonymous',
+      tenant: tenantId,
       body: requestData,
     });
     const hash = createHash('sha256').update(hashPayload).digest('hex');
@@ -261,7 +262,10 @@ export class InvokeModelUseCase extends UseCase<InvokeModelDTO, any> {
         ?.map((m: any) => (typeof m.content === 'string' ? m.content : ''))
         .join(' ') ?? JSON.stringify(requestData);
 
-    const semanticResult = await semanticCache.lookup(promptText, dto.modelId);
+    // Tier 1 is scoped by the SAME two keys as the exact cache above (model +
+    // tenant): it answers FIRST, so leaving it unscoped would undo the tenant
+    // isolation of Tier 2 entirely.
+    const semanticResult = await semanticCache.lookup(promptText, dto.modelId, tenantId);
 
     if (semanticResult.hit) {
       // Unredact PII before returning semantic hit
@@ -407,7 +411,7 @@ export class InvokeModelUseCase extends UseCase<InvokeModelDTO, any> {
       setCachedResponse(hash, currentResponse);
       // Patrón 3: Tier 1 — also store in semantic cache (reuses embedding from MISS)
       // Fire-and-forget: non-critical, so we don't await or catch here.
-      semanticCache.store(missEmbedding, promptHash, currentResponse, dto.modelId);
+      semanticCache.store(missEmbedding, promptHash, currentResponse, dto.modelId, tenantId);
     }
 
     // Unredact before returning to user

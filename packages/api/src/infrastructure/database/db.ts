@@ -159,7 +159,29 @@ export class DatabaseService extends EventEmitter {
             created_at TEXT NOT NULL,
             FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
           );
+
+          CREATE TABLE IF NOT EXISTS semantic_cache_meta (
+            vector_id   INTEGER PRIMARY KEY,
+            prompt_hash TEXT NOT NULL UNIQUE,
+            response    TEXT NOT NULL,
+            model_id    TEXT NOT NULL,
+            tenant_id   TEXT NOT NULL DEFAULT 'anonymous',
+            created_at  TEXT NOT NULL,
+            hit_count   INTEGER DEFAULT 0
+          );
       `);
+
+      // Migration guard: DBs created before the cache became tenant-scoped have
+      // a semantic_cache_meta table without tenant_id. Adding the column with a
+      // default keeps old entries readable (they belong to 'anonymous', never to
+      // a real tenant), instead of crashing on the new prepared statements.
+      try {
+        this.proxiedDb.exec(
+          "ALTER TABLE semantic_cache_meta ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'anonymous'",
+        );
+      } catch {
+        // Column already exists (fresh schema above) — nothing to migrate.
+      }
 
       // Patrón 3: sqlite-vec — int8 quantized vector search
       // Design: two tables work together:
@@ -178,14 +200,6 @@ export class DatabaseService extends EventEmitter {
           this.proxiedDb.exec(`
             CREATE VIRTUAL TABLE IF NOT EXISTS semantic_vectors USING vec0(
               embedding int8[768]
-            );
-            CREATE TABLE IF NOT EXISTS semantic_cache_meta (
-              vector_id   INTEGER PRIMARY KEY,
-              prompt_hash TEXT NOT NULL UNIQUE,
-              response    TEXT NOT NULL,
-              model_id    TEXT NOT NULL,
-              created_at  TEXT NOT NULL,
-              hit_count   INTEGER DEFAULT 0
             );
           `);
         }
@@ -264,6 +278,23 @@ export class DatabaseService extends EventEmitter {
           new Date().toISOString(),
         );
 
+      // Patrón 3: semantic cache metadata. Prepared unconditionally (plain
+      // table) so the tenant/model scoping below is testable without the vec0
+      // extension; only the vector statements need sqlite-vec.
+      this.insertVectorMetaStmt = this.proxiedDb.prepare(
+        `INSERT OR REPLACE INTO semantic_cache_meta
+         (vector_id, prompt_hash, response, model_id, tenant_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      // The claim filters by model AND tenant: a KNN candidate that belongs to
+      // another caller or another model is a MISS, never a cross-tenant /
+      // cross-model read. hit_count only increments on a real (scoped) hit.
+      this.getVectorMetaStmt = this.proxiedDb.prepare(
+        `UPDATE semantic_cache_meta SET hit_count = hit_count + 1
+         WHERE vector_id = ? AND model_id = ? AND tenant_id = ?
+         RETURNING prompt_hash, response, model_id, hit_count`,
+      );
+
       // Patrón 3: vector prepared statements (only when extension loaded)
       if (this.vecExtensionLoaded) {
         this.insertVectorStmt = this.proxiedDb.prepare(
@@ -276,16 +307,6 @@ export class DatabaseService extends EventEmitter {
            WHERE embedding MATCH ?
              AND k = ?
            ORDER BY distance`,
-        );
-        this.insertVectorMetaStmt = this.proxiedDb.prepare(
-          `INSERT OR REPLACE INTO semantic_cache_meta
-           (vector_id, prompt_hash, response, model_id, created_at)
-           VALUES (?, ?, ?, ?, ?)`,
-        );
-        this.getVectorMetaStmt = this.proxiedDb.prepare(
-          `UPDATE semantic_cache_meta SET hit_count = hit_count + 1
-           WHERE vector_id = ?
-           RETURNING prompt_hash, response, model_id, hit_count`,
         );
       }
 
@@ -421,6 +442,9 @@ export class DatabaseService extends EventEmitter {
    * @param promptHash SHA-256 hash of the full prompt payload
    * @param response   Serialized LLM response to cache
    * @param modelId    Model that produced the response
+   * @param tenantId   Caller identity the entry is scoped to (cache key hygiene:
+   *                   a semantic cache without the caller in the key leaks
+   *                   responses across tenants)
    */
   public storeSemanticVector(
     vectorId: number,
@@ -428,18 +452,13 @@ export class DatabaseService extends EventEmitter {
     promptHash: string,
     response: object,
     modelId: string,
+    tenantId: string,
   ): void {
     if (!this.vecExtensionLoaded || !this.insertVectorStmt || !this.insertVectorMetaStmt) return;
     try {
       const int8Vec = DatabaseService.quantizeToInt8(embedding);
       this.insertVectorStmt.run(vectorId, int8Vec);
-      this.insertVectorMetaStmt.run(
-        vectorId,
-        promptHash,
-        JSON.stringify(response),
-        modelId,
-        new Date().toISOString(),
-      );
+      this.storeSemanticMeta(vectorId, promptHash, response, modelId, tenantId);
     } catch (error) {
       logger.error(
         '[Vec] storeSemanticVector failed',
@@ -447,6 +466,57 @@ export class DatabaseService extends EventEmitter {
         error instanceof Error ? error : new Error(String(error)),
       );
     }
+  }
+
+  /**
+   * Persists the metadata row that scopes a cached semantic entry to the model
+   * that produced it AND the tenant that requested it. Public (and independent
+   * of the vec0 extension) so the scoping contract is unit-testable.
+   */
+  public storeSemanticMeta(
+    vectorId: number,
+    promptHash: string,
+    response: object,
+    modelId: string,
+    tenantId: string,
+  ): void {
+    if (!this.insertVectorMetaStmt) return;
+    this.insertVectorMetaStmt.run(
+      vectorId,
+      promptHash,
+      JSON.stringify(response),
+      modelId,
+      tenantId,
+      new Date().toISOString(),
+    );
+  }
+
+  /**
+   * Claims a semantic cache entry for a caller: returns the cached response and
+   * increments hit_count ONLY when the entry belongs to the same model and the
+   * same tenant. Any other combination is a MISS (null) — this is the filter
+   * that makes a KNN candidate safe to serve.
+   */
+  public claimSemanticHit(
+    vectorId: number,
+    modelId: string,
+    tenantId: string,
+  ): { response: unknown; modelId: string; hitCount: number } | null {
+    if (!this.getVectorMetaStmt) return null;
+    const meta = this.getVectorMetaStmt.get(vectorId, modelId, tenantId) as
+      | {
+          prompt_hash: string;
+          response: string;
+          model_id: string;
+          hit_count: number;
+        }
+      | undefined;
+    if (!meta) return null;
+    return {
+      response: JSON.parse(meta.response),
+      modelId: meta.model_id,
+      hitCount: meta.hit_count,
+    };
   }
 
   /**
@@ -458,11 +528,17 @@ export class DatabaseService extends EventEmitter {
    * — this method handles quantization internally for API simplicity.
    *
    * @param queryEmbedding Raw Float32Array from the embedding model
+   * @param modelId        Model the caller is invoking — a nearby vector cached
+   *                       for a DIFFERENT model is not a hit
+   * @param tenantId       Caller identity — a nearby vector cached for another
+   *                       tenant is not a hit (no cross-tenant reads)
    * @param topK           Candidates to retrieve from sqlite-vec (default: 3)
    * @param distThreshold  L2 distance threshold (lower = stricter match)
    */
   public findSemanticMatch(
     queryEmbedding: Float32Array,
+    modelId: string,
+    tenantId: string,
     topK: number = 3,
     distThreshold: number = 0.15,
   ): { response: any; modelId: string; hitCount: number } | null {
@@ -474,40 +550,24 @@ export class DatabaseService extends EventEmitter {
         distance: number;
       }>;
 
-      if (candidates.length === 0) return null;
+      // Walk the candidates in distance order: the nearest neighbor may belong
+      // to another tenant/model, but a slightly farther one (still under the
+      // threshold) may be a legitimate scoped hit.
+      for (const candidate of candidates) {
+        if (candidate.distance > distThreshold) break;
 
-      const best = candidates[0]!;
-      if (best.distance > distThreshold) {
-        logger.info('[Vec] Semantic search: nearest neighbor too distant', {
-          distance: best.distance,
-          threshold: distThreshold,
-        });
-        return null;
+        const hit = this.claimSemanticHit(candidate.rowid, modelId, tenantId);
+        if (hit) {
+          logger.info('[Vec] Semantic cache HIT', {
+            distance: candidate.distance,
+            hitCount: hit.hitCount,
+            modelId: hit.modelId,
+          });
+          return hit;
+        }
       }
 
-      // Increment hit_count and return cached data atomically
-      const meta = this.getVectorMetaStmt.get(best.rowid) as
-        | {
-            prompt_hash: string;
-            response: string;
-            model_id: string;
-            hit_count: number;
-          }
-        | undefined;
-
-      if (!meta) return null;
-
-      logger.info('[Vec] Semantic cache HIT', {
-        distance: best.distance,
-        hitCount: meta.hit_count,
-        modelId: meta.model_id,
-      });
-
-      return {
-        response: JSON.parse(meta.response),
-        modelId: meta.model_id,
-        hitCount: meta.hit_count,
-      };
+      return null;
     } catch (error) {
       logger.error(
         '[Vec] findSemanticMatch failed',
@@ -521,11 +581,11 @@ export class DatabaseService extends EventEmitter {
   // ─── Legacy stubs (kept for backwards compat, superseded by storeSemanticVector) ─
   /** @deprecated Use storeSemanticVector() instead. */
   public storeVector(id: number, embedding: Float32Array): void {
-    this.storeSemanticVector(id, embedding, `legacy-${id}`, {}, 'unknown');
+    this.storeSemanticVector(id, embedding, `legacy-${id}`, {}, 'unknown', 'anonymous');
   }
   /** @deprecated Use findSemanticMatch() instead. */
   public searchSimilarVectors(embedding: Float32Array, limit: number = 5): any[] {
-    const match = this.findSemanticMatch(embedding, limit);
+    const match = this.findSemanticMatch(embedding, 'unknown', 'anonymous', limit);
     return match ? [match] : [];
   }
   // ─────────────────────────────────────────────────────────────────────────────

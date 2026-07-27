@@ -82,9 +82,17 @@ class SemanticCacheService {
    * When sqlite-vec is not available, always returns MISS with a dummy embedding.
    *
    * @param promptText  The full prompt string to embed and search.
-   * @param modelId     Used for logging context only (not part of the vector query).
+   * @param modelId     Model being invoked — part of the cache key: a nearby
+   *                    prompt cached for another model is NOT a hit.
+   * @param tenantId    Caller identity — part of the cache key: a nearby prompt
+   *                    cached for another tenant is NOT a hit (paraphrasing a
+   *                    prompt must never read another caller's response).
    */
-  async lookup(promptText: string, modelId: string): Promise<SemanticCacheResult> {
+  async lookup(
+    promptText: string,
+    modelId: string,
+    tenantId: string,
+  ): Promise<SemanticCacheResult> {
     const traceId = getContext()?.traceId;
 
     // Derive a deterministic hash for this exact prompt (used as a secondary key)
@@ -111,7 +119,7 @@ class SemanticCacheService {
       return { hit: false, embedding: new Float32Array(768), promptHash };
     }
 
-    const match = findSemanticMatch(embedding, 3, DEFAULT_DIST_THRESHOLD);
+    const match = findSemanticMatch(embedding, modelId, tenantId, 3, DEFAULT_DIST_THRESHOLD);
 
     if (match) {
       logger.info('[SemanticCache] Semantic HIT', {
@@ -145,15 +153,22 @@ class SemanticCacheService {
    * @param promptHash  SHA-256 hash from the MISS result.
    * @param response    The LLM response object to cache.
    * @param modelId     The model that produced the response.
+   * @param tenantId    The caller the entry belongs to (scopes future hits).
    */
-  store(embedding: Float32Array, promptHash: string, response: object, modelId: string): void {
+  store(
+    embedding: Float32Array,
+    promptHash: string,
+    response: object,
+    modelId: string,
+    tenantId: string,
+  ): void {
     if (!isVecEnabled()) return;
 
     // Compact vectorId: 47-bit timestamp XOR 16-bit random → fits in SQLite INTEGER
     const vectorId = (Date.now() & 0x7fffffffffff) ^ Math.floor(Math.random() * 65536);
 
     try {
-      storeSemanticVector(vectorId, embedding, promptHash, response, modelId);
+      storeSemanticVector(vectorId, embedding, promptHash, response, modelId, tenantId);
       logger.info('[SemanticCache] Response stored in semantic cache', {
         vectorId,
         modelId,
