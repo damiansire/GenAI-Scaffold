@@ -237,7 +237,16 @@ export class InvokeModelUseCase extends UseCase<InvokeModelDTO, any> {
     // Canonicalize with a key-sorted replacer so that semantically identical
     // payloads with different key orders hash to the SAME value (no cache misses
     // caused purely by JSON key ordering).
-    const hashPayload = stableStringify({ modelId: dto.modelId, body: requestData });
+    //
+    // The caller identity is PART OF THE KEY: without it the exact cache is
+    // global, and tenant B gets tenant A's stored answer for the same prompt.
+    // Keys are namespaced per tenant, so the worst case is a redundant model
+    // call, never a cross-tenant read.
+    const hashPayload = stableStringify({
+      modelId: dto.modelId,
+      tenant: dto.context?.userId ?? 'anonymous',
+      body: requestData,
+    });
     const hash = createHash('sha256').update(hashPayload).digest('hex');
 
     // ───────────────────────────────────────────────────
